@@ -103,7 +103,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 dataset/
 │
 │   README.md
-│   manuscript.pdf                                                           Submitted manuscript (PDF)
 ├── EPs Bulk_commented.nb                                                    Fig. 2
 ├── Numerical analysis of EP_no_output_commented.nb                         Fig. 3
 └── Topology Eqs and figures of NH NNN Rice-Mele model_commented.nb        Figs. 4–5 and Appendix
@@ -116,7 +115,6 @@ Each notebook is based on the original working notebook with all key input cells
 | `EPs Bulk_commented.nb` | Fig. 2 | Exceptional points in the Bloch Hamiltonian: four-panel complex-energy plot at representative (t, γ) values |
 | `Numerical analysis of EP_no_output_commented.nb` | Fig. 3 | EPs in finite chains: exact symbolic analysis for N = 2, 3, 4 unit cells; discriminant and Jordan decomposition; extended numerics for N = 9, 10 |
 | `Topology Eqs and figures of NH NNN Rice-Mele model_commented.nb` | Figs. 4–5, Appendix | Phase maps (condition number, signed dIPR, edge-state count, GBZ winding number); eigenstate profiles at snap points; dIPR phase-transition curve; Riemann-sheet visualisations |
-| `manuscript.pdf` | — | Manuscript PDF (submitted version); preprint at [arXiv:2606.24705](https://arxiv.org/abs/2606.24705) |
 
 
 # METHODOLOGICAL INFORMATION
