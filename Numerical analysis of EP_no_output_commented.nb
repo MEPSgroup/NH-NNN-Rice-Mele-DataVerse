@@ -1,0 +1,2991 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Wolfram 15.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       154,          7]
+NotebookDataLength[    106631,       2983]
+NotebookOptionsPosition[     86155,       2671]
+NotebookOutlinePosition[     86578,       2688]
+CellTagsIndexPosition[     86535,       2685]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["\<\
+Investigation of the EPs for finite size Hamiltonians of the long-range \
+Rice-Mele model: PBC vs OBC.\
+\>", "Title",
+ CellChangeTimes->{{3.988440188893673*^9, 
+  3.9884402022462873`*^9}},ExpressionUUID->"712c9696-11c1-442b-b40b-\
+3361f4bac19f"],
+
+Cell["\<\
+Dario Bercioux
+Summer term 2026\
+\>", "Subtitle",
+ CellChangeTimes->{{3.988440206787942*^9, 
+  3.988440222732465*^9}},ExpressionUUID->"0cfce0a5-831b-42a3-8b22-\
+62ef1b8bf110"],
+
+Cell["\<\
+(* ============================================================
+   SECTION 1: INITIALISATION
+   ============================================================
+
+   SAFETY GUARD: The Exit[] command below prevents accidental evaluation of
+   the entire notebook via Kernel -> Evaluate Notebook. Comment it out or \
+skip
+   it before running individual cells.
+
+   showPlots: set True to display all graphical output (ContourPlot,
+   ListDensityPlot, Show[...]). Set False to suppress graphics and keep the
+   saved file small. Computation cells (Hamiltonians, eigenvalues,
+   discriminants, SVD data tables) always run regardless of showPlots. *)\
+\>", "Text",
+ CellChangeTimes->{{3.988440188893673*^9, 
+  3.9884402022462873`*^9}},ExpressionUUID->"1e8fd795-4257-4221-90e7-\
+5383561a448e"],
+
+Cell["(*Exit[]*)", "Input",
+ CellLabel->
+  "In[201]:=",ExpressionUUID->"0c838895-790d-471f-8e52-89f359bcdefc"],
+
+Cell["\<\
+(* Initialisation flag: set True to see all plots, False to skip them
+   and keep the saved notebook size small. *)
+showPlots = False;\
+\>", "Input",
+ CellChangeTimes->{{3.999335669934176*^9, 3.999335672364497*^9}},
+ CellLabel->
+  "In[202]:=",ExpressionUUID->"904af919-50b3-4110-b236-8030f409573a"],
+
+Cell["\<\
+(* Global style options for all plot types.
+   ListDensityPlot and ContourPlot use FontSize 26 to match the \
+arXiv:2606.24705 figure style; all other plot types use 14. *)\
+\>", "Input",
+ CellLabel->
+  "In[204]:=",ExpressionUUID->"14d9d89f-8237-4d48-b0cf-7f5cba3f528a"],
+
+Cell["\<\
+SetOptions[ListPlot, BaseStyle -> {FontFamily -> \"Latin Modern Roman\", \
+FontSize -> 14}, FrameStyle -> Directive[Black, FontColor -> Black]];
+SetOptions[Plot, BaseStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize \
+-> 14}, FrameStyle -> Directive[Black, FontColor -> Black]];
+SetOptions[ListLinePlot, BaseStyle -> {FontFamily -> \"Latin Modern Roman\", \
+FontSize -> 14}, FrameStyle -> Directive[Black, FontColor -> Black], Frame -> \
+True, Axes -> False];
+SetOptions[ListPlot3D, BaseStyle -> {FontFamily -> \"Latin Modern Roman\", \
+FontSize -> 14}, AxesStyle -> Directive[Black, FontColor -> Black]];
+SetOptions[Plot3D, BaseStyle -> {FontFamily -> \"Latin Modern Roman\", \
+FontSize -> 14}, AxesStyle -> Directive[Black, FontColor -> Black]];
+SetOptions[ListDensityPlot, BaseStyle -> {FontFamily -> \"Latin Modern \
+Roman\", FontSize -> 26}, FrameStyle -> Directive[Black, FontColor -> \
+Black]];
+SetOptions[ContourPlot, BaseStyle -> {FontFamily -> \"Latin Modern Roman\", \
+FontSize -> 26}, FrameStyle -> Directive[Black, FontColor -> Black]];
+SetOptions[RegionPlot, BaseStyle -> {FontFamily -> \"Latin Modern Roman\", \
+FontSize -> 14}, FrameStyle -> Directive[Black, FontColor -> Black]];\
+\>", "Input",
+ CellLabel->
+  "In[205]:=",ExpressionUUID->"2d3a2475-17b4-4ae9-8888-fb3b25187131"],
+
+Cell["\<\
+(* Physical context: we study exceptional points for finite-size
+   Hamiltonians of the non-Hermitian long-range Rice-Mele model.
+   Parameters: \[Epsilon]p (on-site average), \[Epsilon]m (sublattice \
+offset), \[Gamma] (NH gain/loss),
+   t (NN hopping), tp (NNN hopping), m (NNN on-site modulation).
+   We set \[Epsilon]p = \[Epsilon]m = 0 throughout (shifts only) and compare \
+PBC vs OBC.
+   The main finding is that the NNN on-site term m plays a role in finite
+   systems that is absent in the bulk limit. *)\
+\>", "Text",
+ CellChangeTimes->{{3.987667485395836*^9, 
+  3.987667685709869*^9}},ExpressionUUID->"ab693d14-97b3-466f-9c34-\
+6d7aa2da23ef"],
+
+Cell["\<\
+(* ============================================================
+   SECTION 2: TIGHT-BINDING HAMILTONIAN hamTB[n, BC]
+   ============================================================
+
+   hamTB[n, BC] returns the 2n x 2n tight-binding matrix for n unit cells.
+   BC = 1 -> periodic boundary conditions (PBC)
+   BC = 0 -> open boundary conditions (OBC)
+
+   Diagonal entries: (\[Epsilon]p + \[Epsilon]m + i\[Gamma]) for A sites, (\
+\[Epsilon]p - \[Epsilon]m - i\[Gamma]) for B sites.
+   Off-diagonal1 (nearest-neighbour, bands +/-1): alternating {-t, -tp}.
+   Off-diagonal2 (next-nearest-neighbour, bands +/-2): constant -m.
+   PBC wrap-arounds (bands 1,2n and 2n,1) add -tp and -m respectively. *)\
+\>", "Input",
+ CellLabel->
+  "In[213]:=",ExpressionUUID->"ac24f86d-661f-4c15-8d27-3a177c16464a"],
+
+Cell["\<\
+hamTB[n_, BC_] := Module[{hamiltonian, umat, diag, offdiag1, offdiag2},
+  (* On-site energies: +\[Epsilon]m+I\[Gamma] on A-sites, -\[Epsilon]m-I\
+\[Gamma] on B-sites *)
+  diag = DiagonalMatrix[
+    Flatten[ConstantArray[{\[Epsilon]p + \[Epsilon]m + I \[Gamma], \
+\[Epsilon]p - \[Epsilon]m - I \[Gamma]}, n]]];
+  (* NN hopping: alternating -t (intra-cell) and -t' (inter-cell) along the \
+chain *)
+  offdiag1 = -Drop[Flatten[ConstantArray[{t, tp}, n]], -1];
+  (* NNN hopping: uniform -m on the 2nd super/sub-diagonal; length 2n-2 fills \
+the full diagonal *)
+  offdiag2 = ConstantArray[-m, 2 n - 2];
+  hamiltonian = diag
+    + DiagonalMatrix[offdiag1, 1]
+    + DiagonalMatrix[offdiag1, -1]
+    + DiagonalMatrix[offdiag2, 2]
+    + DiagonalMatrix[offdiag2, -2];
+  (* PBC wrap-around NN hopping (arXiv:2606.24705, Eq.(1)): t' corner element \
+*)
+  If[BC == 1, hamiltonian[[1, 2 n]] = -tp, 0];
+  If[BC == 1, hamiltonian[[2 n, 1]] = -tp, 0];
+  (* PBC wrap-around NNN hopping (m corner elements; for n=2 these coincide \
+with bulk diag) *)
+  If[BC == 1, hamiltonian[[1, 2 n - 1]] = -m, 0];
+  If[BC == 1, hamiltonian[[2, 2 n]] = -m, 0];
+  If[BC == 1, hamiltonian[[2 n - 1, 1]] = -m, 0];
+  If[BC == 1, hamiltonian[[2 n, 2]] = -m, 0];
+  Return[hamiltonian]
+];\
+\>", "Input",
+ CellLabel->
+  "In[214]:=",ExpressionUUID->"15ca0f2f-362f-4c50-9508-f615f2533a09"],
+
+Cell["\<\
+(* ============================================================
+   SECTION 3: EP DETECTOR logSVDmin[Ham, tv, tpv, \[Gamma]v, mv]
+   ============================================================
+
+   At an exceptional point the eigenvectors coalesce, making the matrix of
+   right eigenvectors U (normalised column-wise) singular. The ratio
+   \[Sigma]_max / \[Sigma]_min of its singular values diverges to +\[Infinity].
+
+   logSVDmin returns log10(\[Sigma]_max / \[Sigma]_min) = log10(kappa(U))
+   (arXiv:2606.24705, Eq.(10): condition number of the eigenvector matrix),
+   which diverges at EPs and stays
+   finite in the topological and trivial phases. It is used to produce the
+   density-plot panels identifying EP loci in the (t/\[Gamma], t'/\[Gamma]) \
+plane. *)\
+\>", "Input",
+ CellLabel->
+  "In[215]:=",ExpressionUUID->"dfdb7a8e-47b6-44d4-ae9f-eb7bebb394b0"],
+
+Cell["\<\
+logSVDmin[Ham_, tv_, tpv_, \[Gamma]v_, mv_] := Module[{eR, vR, U, sv},
+  {eR, vR} = Eigensystem[Ham /. {t -> tv, tp -> tpv, \[Gamma] -> \[Gamma]v, m \
+-> mv}];
+  U = Transpose[vR/(Norm /@ vR)];    (* normalised eigenvector matrix *)
+  sv = SingularValueList[N[U]];
+  Log[10, Max[sv]/Min[sv]]           (* diverges to +\[Infinity] at EP *)
+];\
+\>", "Input",
+ CellLabel->
+  "In[216]:=",ExpressionUUID->"ab419e2d-4f90-49f1-82e9-2ba1da10aa34"],
+
+Cell[CellGroupData[{
+
+Cell["Case with N = 2", "Section",
+ CellChangeTimes->{{3.988440273572053*^9, 
+  3.9884402836504097`*^9}},ExpressionUUID->"6975cc7d-32cb-471f-8328-\
+1a4c563f527d"],
+
+Cell[CellGroupData[{
+
+Cell["Periodic boundary condition case", "Subsection",
+ CellChangeTimes->{{3.98844029114736*^9, 
+  3.9884403025389853`*^9}},ExpressionUUID->"d16fca0b-6a40-4721-9414-\
+b012e99245f5"],
+
+Cell[CellGroupData[{
+
+Cell["Case m = 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 
+  3.988440358135495*^9}},ExpressionUUID->"9d05c5d8-9ca6-4cf4-97e2-\
+6979096faf15"],
+
+Cell["\<\
+(* N=2 PBC Hamiltonian at m=0, \[Epsilon]p=\[Epsilon]m=0.
+   Hamn2RPBCm0 is the 4x4 symbolic matrix. Its eigenvalues en2RPBCm0
+   are the bulk dispersion at k=0 and k=\[Pi] (arXiv:2606.24705, Eq.(4), at \
+those
+   specific quasi-momenta). The discriminant of the characteristic polynomial
+   vanishes at the exceptional-point threshold \[Gamma]c = |t \[PlusMinus] \
+t'|
+   (arXiv:2606.24705, Eq.(6)). *)\
+\>", "Input",
+ CellLabel->
+  "In[217]:=",ExpressionUUID->"1ed0defa-da08-4ba6-8974-499fdf0e9c7e"],
+
+Cell["\<\
+Hamn2RPBCm0 = hamTB[2, 1] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0, m -> 0};
+MatrixForm[Hamn2RPBCm0];
+{en2RPBCm0, vec2RPBCm0} = FullSimplify[
+  Eigensystem[Hamn2RPBCm0],
+  Assumptions -> {Im[t] == 0, Re[t] > 0, Im[tp] == 0, Re[tp] > 0,
+                  Im[\[Gamma]] == 0, Re[\[Gamma]] > 0, Im[m] == 0, Re[m] > \
+0}];\
+\>", "Input",
+ CellChangeTimes->{3.999335585966159*^9},
+ CellLabel->
+  "In[218]:=",ExpressionUUID->"0813b5e7-b3fd-4516-b451-7426b275b1ef"],
+
+Cell["\<\
+(* Display eigenvalues: en2RPBCm0 shows the four PBC eigenvalues
+   E = \[PlusMinus]Sqrt[(t-t')^2 - \[Gamma]^2] and \[PlusMinus]Sqrt[(t+t')^2 \
+- \[Gamma]^2],
+   confirming arXiv:2606.24705, Eq.(4). *)\
+\>", "Input",
+ CellLabel->
+  "In[221]:=",ExpressionUUID->"f1a99eb5-4e8a-461f-b9a0-0728376f0dd9"],
+
+Cell[CellGroupData[{
+
+Cell["en2RPBCm0", "Input",
+ CellLabel->
+  "In[222]:=",ExpressionUUID->"4f0e863f-1784-4e48-9977-cd29332b4237"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"-", 
+    SqrtBox[
+     RowBox[{
+      SuperscriptBox[
+       RowBox[{"(", 
+        RowBox[{"t", "-", "tp"}], ")"}], "2"], "-", 
+      SuperscriptBox["\[Gamma]", "2"]}]]}], ",", 
+   SqrtBox[
+    RowBox[{
+     SuperscriptBox[
+      RowBox[{"(", 
+       RowBox[{"t", "-", "tp"}], ")"}], "2"], "-", 
+     SuperscriptBox["\[Gamma]", "2"]}]], ",", 
+   RowBox[{"-", 
+    SqrtBox[
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{"t", "+", "tp", "-", "\[Gamma]"}], ")"}], " ", 
+      RowBox[{"(", 
+       RowBox[{"t", "+", "tp", "+", "\[Gamma]"}], ")"}]}]]}], ",", 
+   SqrtBox[
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{"t", "+", "tp", "-", "\[Gamma]"}], ")"}], " ", 
+     RowBox[{"(", 
+      RowBox[{"t", "+", "tp", "+", "\[Gamma]"}], ")"}]}]]}], "}"}]], "Output",\
+
+ CellChangeTimes->{3.999335590002795*^9, 3.999335637422709*^9, 
+  3.999335673550955*^9, 3.999580259809712*^9, 3.9995802964046793`*^9},
+ CellLabel->
+  "Out[222]=",ExpressionUUID->"ea8501b6-7633-4a2d-98bf-7938bb146084"]
+}, Open  ]],
+
+Cell["\<\
+(* Characteristic polynomial of Hamn2RPBCm0 - \[Lambda] I.
+   Its discriminant in \[Lambda] identifies the EP threshold analytically. *)\
+\
+\>", "Input",
+ CellLabel->
+  "In[223]:=",ExpressionUUID->"26cb818d-6e8f-48d2-8d03-d84dfacef5e1"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+eqsec2RPBCm0 = Det[Hamn2RPBCm0 - \[Lambda] IdentityMatrix[4]] // FullSimplify\
+\
+\>", "Input",
+ CellLabel->
+  "In[224]:=",ExpressionUUID->"89fce609-1e01-4300-98a9-7419c519e986"],
+
+Cell[BoxData[
+ RowBox[{
+  SuperscriptBox["t", "4"], "+", 
+  SuperscriptBox[
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"-", 
+      SuperscriptBox["tp", "2"]}], "+", 
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}], "2"], "-", 
+  RowBox[{"2", " ", 
+   SuperscriptBox["t", "2"], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["tp", "2"], "+", 
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}]}]}]], "Output",
+ CellChangeTimes->{3.999335592465906*^9, 3.99933563742618*^9, 
+  3.9993356735600767`*^9, 3.999580259828248*^9, 3.9995802964082823`*^9},
+ CellLabel->
+  "Out[224]=",ExpressionUUID->"378025be-4699-4dd3-b911-cb166545aea0"]
+}, Open  ]],
+
+Cell["\<\
+(* Discriminant of the characteristic polynomial.
+   At an EP two eigenvalues merge, so disc2RPBCm0 = 0.
+   For N=2 PBC, m=0: disc = 4096 t^4 t'^4 \
+(t-t'-\[Gamma])(t+t'-\[Gamma])(t-t'+\[Gamma])(t+t'+\[Gamma]).
+   The EP locus is |t \[PlusMinus] t'| = \[Gamma], i.e. the four lines in the \
+(t,t') plane. *)\
+\>", "Input",
+ CellLabel->
+  "In[225]:=",ExpressionUUID->"6ea47254-6e35-4250-a646-a9e4bbfe76da"],
+
+Cell[CellGroupData[{
+
+Cell["disc2RPBCm0 = Discriminant[eqsec2RPBCm0, \[Lambda]] // FullSimplify", \
+"Input",
+ CellLabel->
+  "In[226]:=",ExpressionUUID->"84128076-6819-4519-9527-76b34b75f0b2"],
+
+Cell[BoxData[
+ RowBox[{"4096", " ", 
+  SuperscriptBox["t", "4"], " ", 
+  SuperscriptBox["tp", "4"], " ", 
+  RowBox[{"(", 
+   RowBox[{"t", "-", "tp", "-", "\[Gamma]"}], ")"}], " ", 
+  RowBox[{"(", 
+   RowBox[{"t", "+", "tp", "-", "\[Gamma]"}], ")"}], " ", 
+  RowBox[{"(", 
+   RowBox[{"t", "-", "tp", "+", "\[Gamma]"}], ")"}], " ", 
+  RowBox[{"(", 
+   RowBox[{"t", "+", "tp", "+", "\[Gamma]"}], ")"}]}]], "Output",
+ CellChangeTimes->{3.999335637437834*^9, 3.999335673568651*^9, 
+  3.999580259846085*^9, 3.999580296424851*^9},
+ CellLabel->
+  "Out[226]=",ExpressionUUID->"2c8c687c-5dcc-48af-b3bb-5b09317fdb11"]
+}, Open  ]],
+
+Cell["(* Parametric function for numerical evaluation. *)", "Input",
+ CellLabel->
+  "In[227]:=",ExpressionUUID->"ffc2959b-a854-47b0-8f86-4e7e41ae381e"],
+
+Cell["\<\
+disc2RPBCm0f[tv_, tpv_, \[Gamma]v_] := disc2RPBCm0 /. {t -> tv, tp -> tpv, \
+\[Gamma] -> \[Gamma]v}\
+\>", "Input",
+ CellLabel->
+  "In[228]:=",ExpressionUUID->"d1f6eed2-5bd1-4732-b822-b2375e8fe4b1"],
+
+Cell["\<\
+(* ContourPlot of the EP locus disc2RPBCm0 = 0 in the (t/\[Gamma], \
+t'/\[Gamma]) plane
+   for \[Gamma]=1.  This is Fig. 3a of arXiv:2606.24705 \
+(https://arxiv.org/abs/2606.24705).
+   Controlled by showPlots: set False to skip and save file space. *)\
+\>", "Input",
+ CellLabel->
+  "In[229]:=",ExpressionUUID->"0891fbd9-19e9-4feb-b83d-8c96c3870c07"],
+
+Cell["\<\
+If[showPlots,
+  With[{\[Gamma] = 1},
+    ContourPlot[disc2RPBCm0f[t, tp, 1] == 0, {t, -4, 4}, {tp, -4, 4},
+      PlotPoints -> 100,
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"}]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[230]:=",ExpressionUUID->"8cd69ab0-a641-49d6-b64e-7941d463a9f2"],
+
+Cell["\<\
+(* SVD-based EP detector on the (t/\[Gamma], t'/\[Gamma]) grid (\[Gamma]=1, \
+m=0).
+   svd2PBCm0 stores {t, t', logSVDmin} for a 435x435 grid from -5 to 5.
+   This is the data for the density plot in Fig. 3b. *)\
+\>", "Input",
+ CellLabel->
+  "In[231]:=",ExpressionUUID->"c5ead752-a88d-4c0c-a5f1-44d8efc0be87"],
+
+Cell["\<\
+svd2PBCm0 = With[{\[Delta] = 0.23/10},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn2RPBCm0, t, tp, 1, 0]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[232]:=",ExpressionUUID->"9b156c22-0468-422e-87cf-4f8b2201c92c"],
+
+Cell["\<\
+(* Density plot of logSVDmin overlaid with the analytical EP contour.
+   Controlled by showPlots. *)\
+\>", "Input",
+ CellLabel->
+  "In[233]:=",ExpressionUUID->"8a0c7c4a-73bb-4904-b981-cb27a6ca224f"],
+
+Cell["\<\
+If[showPlots,
+  Show[
+    ListDensityPlot[svd2PBCm0,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 24,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> {0, 2}],
+    ContourPlot[disc2RPBCm0f[t, tp, 1] == 0, {t, -5, 5}, {tp, -5, 5},
+      PlotPoints -> 100,
+      ContourStyle -> {Black, AbsoluteThickness[0.8], Dashed}]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[234]:=",ExpressionUUID->"36a38c28-8167-4cd2-ba45-4e78ae567e92"],
+
+Cell["(* MatrixForm display of H(N=2, PBC, m=0) for reference. *)", "Input",
+ CellLabel->
+  "In[235]:=",ExpressionUUID->"be60c75f-0d9f-472b-b82f-863686d97de4"],
+
+Cell[CellGroupData[{
+
+Cell["MatrixForm[Hamn2RPBCm0]", "Input",
+ CellLabel->
+  "In[236]:=",ExpressionUUID->"8b0894e2-0148-45f7-a9da-b9cf936524ff"],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", 
+      RowBox[{"-", "tp"}]},
+     {
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0"},
+     {"0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}]},
+     {
+      RowBox[{"-", "tp"}], "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}]}
+    },
+    GridBoxAlignment->{"Columns" -> {{Center}}, "Rows" -> {{Baseline}}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output",
+ CellChangeTimes->{{3.9993356525629272`*^9, 3.9993356739743853`*^9}, 
+   3.999580263253092*^9, 3.999580296837501*^9},
+ CellLabel->
+  "Out[236]//MatrixForm=",ExpressionUUID->"6162d2a1-097d-4f31-80cc-\
+9f6dfd2d6edf"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Case m \[NotEqual] 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 3.988440358135495*^9}, {
+  3.999580405709573*^9, 
+  3.999580406539406*^9}},ExpressionUUID->"4291fd7d-730e-4960-b28d-\
+d5525e95f697"],
+
+Cell["\<\
+(* N=2 PBC Hamiltonian with m\[NotEqual]0 (NNN on-site modulation).
+   The NNN coupling m shifts eigenvalues and modifies the EP threshold.
+   For N=2 PBC the eigenvalues become E = m \[PlusMinus] Sqrt[(t-t')^2 - \
+\[Gamma]^2]
+   and E = -m \[PlusMinus] Sqrt[(t+t')^2 - \[Gamma]^2]; the EP condition is
+   unchanged (same \[Gamma]_c) but the spectrum is shifted by \[PlusMinus]m. \
+*)\
+\>", "Input",
+ CellLabel->
+  "In[239]:=",ExpressionUUID->"0bff471d-cd49-4d09-b0e9-313cb8f3edc4"],
+
+Cell["\<\
+Hamn2RPBCm = hamTB[2, 1] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0};
+MatrixForm[Hamn2RPBCm];
+(* The eigensystem is not evaluated symbolically: for m\[NotEqual]0 there is  \
+  no compact closed-form solution known in general (arXiv:2606.24705).    EP \
+detection proceeds via the discriminant and logSVDmin below. *)\
+\>", "Input",
+ CellChangeTimes->{{3.99933562107342*^9, 3.999335621074296*^9}},
+ CellLabel->
+  "In[240]:=",ExpressionUUID->"0813b5e7-b3fd-4516-b451-7426b275b2ef"],
+
+Cell["Clear[disc2RPBC]", "Input",
+ CellLabel->
+  "In[243]:=",ExpressionUUID->"affe97c5-3adc-4b4d-b119-9517640b1c82"],
+
+Cell["(* Characteristic polynomial for m\[NotEqual]0. *)", "Input",
+ CellLabel->
+  "In[244]:=",ExpressionUUID->"74ddf3c7-01d8-4d1c-8489-295d2467431d"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+eqsec2RPBCm = Det[Hamn2RPBCm - \[Lambda] IdentityMatrix[4]] // FullSimplify\
+\>", "Input",
+ CellLabel->
+  "In[245]:=",ExpressionUUID->"3940ebce-d0b5-4212-8203-bea5e06da561"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{"-", 
+     SuperscriptBox[
+      RowBox[{"(", 
+       RowBox[{"t", "-", "tp"}], ")"}], "2"]}], "+", 
+    SuperscriptBox["\[Gamma]", "2"], "+", 
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{"m", "-", "\[Lambda]"}], ")"}], "2"]}], ")"}], " ", 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{"-", 
+     SuperscriptBox[
+      RowBox[{"(", 
+       RowBox[{"t", "+", "tp"}], ")"}], "2"]}], "+", 
+    SuperscriptBox["\[Gamma]", "2"], "+", 
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{"m", "+", "\[Lambda]"}], ")"}], "2"]}], ")"}]}]], "Output",
+ CellChangeTimes->{{3.999335653554401*^9, 3.999335674058086*^9}, 
+   3.9995802632985697`*^9, 3.999580296873974*^9},
+ CellLabel->
+  "Out[245]=",ExpressionUUID->"a05e2c9f-f34e-4c2a-a923-ea4935594b8b"]
+}, Open  ]],
+
+Cell["\<\
+(* Discriminant: roots at EP boundaries shifted by m^2 terms. *)\
+\>", "Input",
+ CellLabel->
+  "In[246]:=",ExpressionUUID->"fec43cdf-a48e-432c-b9aa-3b1f051d9f6e"],
+
+Cell[CellGroupData[{
+
+Cell["disc2RPBCm = Discriminant[eqsec2RPBCm, \[Lambda]] // FullSimplify", \
+"Input",
+ CellLabel->
+  "In[247]:=",ExpressionUUID->"2b370175-2c16-458b-a451-858ea8769282"],
+
+Cell[BoxData[
+ RowBox[{"4096", " ", 
+  RowBox[{"(", 
+   RowBox[{"t", "+", "tp", "-", "\[Gamma]"}], ")"}], " ", 
+  RowBox[{"(", 
+   RowBox[{"t", "+", "tp", "+", "\[Gamma]"}], ")"}], " ", 
+  RowBox[{"(", 
+   RowBox[{
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{"t", "-", "tp"}], ")"}], "2"], "-", 
+    SuperscriptBox["\[Gamma]", "2"]}], ")"}], " ", 
+  SuperscriptBox[
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{"m", "-", "t"}], ")"}], " ", 
+      RowBox[{"(", 
+       RowBox[{"m", "+", "t"}], ")"}], " ", 
+      RowBox[{"(", 
+       RowBox[{"m", "-", "tp"}], ")"}], " ", 
+      RowBox[{"(", 
+       RowBox[{"m", "+", "tp"}], ")"}]}], "+", 
+     RowBox[{
+      SuperscriptBox["m", "2"], " ", 
+      SuperscriptBox["\[Gamma]", "2"]}]}], ")"}], "2"]}]], "Output",
+ CellChangeTimes->{{3.999335653591691*^9, 3.999335674062154*^9}, 
+   3.9995802633344193`*^9, 3.999580296906041*^9},
+ CellLabel->
+  "Out[247]=",ExpressionUUID->"c94bf2ba-405f-488f-9d4e-99c9d50093ab"]
+}, Open  ]],
+
+Cell["\<\
+disc2RPBCmf[tv_, tpv_, \[Gamma]v_, mv_] := disc2RPBCm /. {t -> tv, tp -> tpv, \
+\[Gamma] -> \[Gamma]v, m -> mv}\
+\>", "Input",
+ CellLabel->
+  "In[248]:=",ExpressionUUID->"cebdfbab-7a4d-48d1-bea5-dece3e54a921"],
+
+Cell["\<\
+(* ContourPlot for m\[NotEqual]0 case (commented out by default).
+   Uncomment within the If block if needed. *)\
+\>", "Input",
+ CellLabel->
+  "In[249]:=",ExpressionUUID->"c254a138-39e6-4c35-8532-cc78028b0ae1"],
+
+Cell["\<\
+(*
+If[showPlots,
+  With[{\[Gamma] = 1, m = 1},
+    ContourPlot[disc2RPBCmf[t, tp, \[Gamma], m] == 0, {t, -4, 4}, {tp, -4, \
+4},
+      PlotPoints -> 100,
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"}]],
+  Null]
+*)\
+\>", "Input",
+ CellLabel->
+  "In[250]:=",ExpressionUUID->"8e10d800-8286-4f48-b45f-2864b8b7b1b6"],
+
+Cell["(* SVD grid for m=1, \[Gamma]=1. *)", "Input",
+ CellLabel->
+  "In[251]:=",ExpressionUUID->"f98cecf4-202c-4ac7-9022-fdbe794205fd"],
+
+Cell["\<\
+svd2PBCm = With[{\[Delta] = 0.023},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn2RPBCm, t, tp, 1, 1]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[252]:=",ExpressionUUID->"ae552c29-b809-40ac-aecf-eac4177b7921"],
+
+Cell["\<\
+(* Density plot overlaid with analytical EP contour (m=1, \[Gamma]=1).
+   Controlled by showPlots. *)\
+\>", "Input",
+ CellLabel->
+  "In[253]:=",ExpressionUUID->"6c8bb821-7cb2-4ce7-8b9a-94127bdb6fc3"],
+
+Cell["\<\
+If[showPlots,
+  Show[
+    ListDensityPlot[svd2PBCm,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 14},
+        LegendLabel -> Style[\"log10 \[Sigma]min\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 14]],
+      PlotRange -> Automatic],
+    ContourPlot[disc2RPBCmf[t, tp, 1, 1] == 0, {t, -5, 5}, {tp, -5, 5},
+      PlotPoints -> 100,
+      ContourStyle -> {Black, AbsoluteThickness[1.5], Dashed}]],
+  Null]\
+\>", "Input",
+ CellChangeTimes->{{3.999580272739249*^9, 3.999580292226776*^9}},
+ CellLabel->
+  "In[254]:=",ExpressionUUID->"006e954e-ba95-4371-b74f-902696350a73"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Case of Jordan decomposition at m = 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 
+  3.988440358135495*^9}},ExpressionUUID->"3ced2615-45b3-4386-bbe9-\
+3eb4cdfb8aa6"],
+
+Cell["\<\
+(* At the exceptional point two eigenvalues and their eigenvectors
+   merge. The Jordan normal form J has a 2x2 Jordan block:
+   J = {{E_EP, 1}, {0, E_EP}} for the degenerate pair.
+   This section verifies the EP numerically via JordanDecomposition. *)\
+\>", "Input",
+ CellLabel->
+  "In[255]:=",ExpressionUUID->"d2003ca5-380b-4423-96d4-a045806483b1"],
+
+Cell["\<\
+(* Verify EP by Jordan decomposition for specific parameter values
+   satisfying |t - t'| = \[Gamma] (here t=1/2, t'=1, \[Gamma]=1/2). *)\
+\>", "Input",
+ CellLabel->
+  "In[256]:=",ExpressionUUID->"d3aafb0a-136d-471a-922d-37c9bb1447f3"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+{Sjordan2, Jjordan2} = JordanDecomposition[
+  N[Hamn2RPBCm0 /. {t -> 1/2, tp -> 1, \[Gamma] -> 1/2, m -> 0,
+                    \[Epsilon]p -> 0, \[Epsilon]m -> 0}]];
+Jjordan2  (* Jordan block structure confirms EP *)\
+\>", "Input",
+ CellLabel->
+  "In[257]:=",ExpressionUUID->"1c675ad7-89cb-4f26-82d6-03b3ae54f8ac"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "1.4142135623730967`"}], "-", 
+      RowBox[{"2.0383000842727483`*^-17", " ", "\[ImaginaryI]"}]}], ",", "0", 
+     ",", "0", ",", "0"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"0", ",", "1.414213562373095`", ",", "0", ",", "0"}], "}"}], ",", 
+   
+   RowBox[{"{", 
+    RowBox[{"0", ",", "0", ",", 
+     RowBox[{"2.731932314335691`*^-9", "-", 
+      RowBox[{"9.634810356104755`*^-9", " ", "\[ImaginaryI]"}]}], ",", "0"}], 
+    "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"0", ",", "0", ",", "0", ",", 
+     RowBox[{
+      RowBox[{"-", "2.7319324387422837`*^-9"}], "+", 
+      RowBox[{"9.634810289969557`*^-9", " ", "\[ImaginaryI]"}]}]}], "}"}]}], 
+  "}"}]], "Output",
+ CellChangeTimes->{3.99933567449468*^9, 3.999580263775249*^9, 
+  3.999580297353653*^9},
+ CellLabel->
+  "Out[258]=",ExpressionUUID->"0ce3eeb2-74b8-4086-b3dc-00000731c236"]
+}, Open  ]],
+
+Cell["\<\
+(* Confirm the 2x2 Jordan block in the degenerate subspace. *)\
+\>", "Input",
+ CellLabel->
+  "In[259]:=",ExpressionUUID->"6413f2f6-94ee-41fa-bc3d-4cc41cf21942"],
+
+Cell["If[showPlots, MatrixForm[Jjordan2], Null]", "Input",
+ CellLabel->
+  "In[260]:=",ExpressionUUID->"616e6811-8dd9-437f-9099-e65a2850686f"],
+
+Cell["\<\
+
+Null\
+\>", "Input",
+ CellLabel->
+  "In[261]:=",ExpressionUUID->"cc69fbe6-6486-4cdc-bcda-c723397dab49"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Open boundary condition case", "Subsection",
+ CellChangeTimes->{{3.98844029114736*^9, 
+  3.9884403025389853`*^9}},ExpressionUUID->"71c886c2-0d03-41be-88cc-\
+fd16ac5aeb88"],
+
+Cell[CellGroupData[{
+
+Cell["Case m = 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 
+  3.988440358135495*^9}},ExpressionUUID->"61fd736f-fb75-4d63-be5e-\
+b83f552180ed"],
+
+Cell["\<\
+(* N=2 OBC Hamiltonian (BC=0): no periodic wrap-around terms.
+   In OBC the boundary mixes bulk EP conditions with surface effects.
+   Eigenvalues are more complex than the PBC case (nested square roots). *)\
+\>", "Input",
+ CellLabel->
+  "In[263]:=",ExpressionUUID->"bca8f0bc-e06a-4c71-bd5c-e0f81af5bdbb"],
+
+Cell["\<\
+Hamn2ROBCm0 = hamTB[2, 0] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0, m -> 0};
+MatrixForm[Hamn2ROBCm0];
+{en2ROBCm0, vec2ROBCm0} = FullSimplify[
+  Eigensystem[Hamn2ROBCm0],
+  Assumptions -> {Im[t] == 0, Re[t] > 0, Im[tp] == 0, Re[tp] > 0,
+                  Im[\[Gamma]] == 0, Re[\[Gamma]] > 0, Im[m] == 0, Re[m] > \
+0}];\
+\>", "Input",
+ CellChangeTimes->{{3.99933562208689*^9, 3.999335622088657*^9}},
+ CellLabel->
+  "In[264]:=",ExpressionUUID->"2d48d59b-dd7b-485d-8dd8-05a6034624c0"],
+
+Cell[CellGroupData[{
+
+Cell["en2ROBCm0", "Input",
+ CellLabel->
+  "In[267]:=",ExpressionUUID->"a49e7e6c-b96f-4e64-9b07-cb2719adea78"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"-", 
+    FractionBox[
+     SqrtBox[
+      RowBox[{
+       RowBox[{"2", " ", 
+        SuperscriptBox["t", "2"]}], "+", 
+       SuperscriptBox["tp", "2"], "-", 
+       RowBox[{"tp", " ", 
+        SqrtBox[
+         RowBox[{
+          RowBox[{"4", " ", 
+           SuperscriptBox["t", "2"]}], "+", 
+          SuperscriptBox["tp", "2"]}]]}], "-", 
+       RowBox[{"2", " ", 
+        SuperscriptBox["\[Gamma]", "2"]}]}]], 
+     SqrtBox["2"]]}], ",", 
+   FractionBox[
+    SqrtBox[
+     RowBox[{
+      RowBox[{"2", " ", 
+       SuperscriptBox["t", "2"]}], "+", 
+      SuperscriptBox["tp", "2"], "-", 
+      RowBox[{"tp", " ", 
+       SqrtBox[
+        RowBox[{
+         RowBox[{"4", " ", 
+          SuperscriptBox["t", "2"]}], "+", 
+         SuperscriptBox["tp", "2"]}]]}], "-", 
+      RowBox[{"2", " ", 
+       SuperscriptBox["\[Gamma]", "2"]}]}]], 
+    SqrtBox["2"]], ",", 
+   RowBox[{"-", 
+    SqrtBox[
+     RowBox[{
+      SuperscriptBox["t", "2"], "+", 
+      RowBox[{
+       FractionBox["1", "2"], " ", "tp", " ", 
+       RowBox[{"(", 
+        RowBox[{"tp", "+", 
+         SqrtBox[
+          RowBox[{
+           RowBox[{"4", " ", 
+            SuperscriptBox["t", "2"]}], "+", 
+           SuperscriptBox["tp", "2"]}]]}], ")"}]}], "-", 
+      SuperscriptBox["\[Gamma]", "2"]}]]}], ",", 
+   SqrtBox[
+    RowBox[{
+     SuperscriptBox["t", "2"], "+", 
+     RowBox[{
+      FractionBox["1", "2"], " ", "tp", " ", 
+      RowBox[{"(", 
+       RowBox[{"tp", "+", 
+        SqrtBox[
+         RowBox[{
+          RowBox[{"4", " ", 
+           SuperscriptBox["t", "2"]}], "+", 
+          SuperscriptBox["tp", "2"]}]]}], ")"}]}], "-", 
+     SuperscriptBox["\[Gamma]", "2"]}]]}], "}"}]], "Output",
+ CellChangeTimes->{3.999335675193746*^9, 3.99958026451788*^9, 
+  3.9995802980580807`*^9},
+ CellLabel->
+  "Out[267]=",ExpressionUUID->"e574be73-2337-4c2d-abed-e0a62286ca3b"]
+}, Open  ]],
+
+Cell["(* Characteristic polynomial for N=2 OBC, m=0. *)", "Input",
+ CellLabel->
+  "In[268]:=",ExpressionUUID->"69c672c3-07e2-4ad2-a9a8-40a4efa8f32d"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+eqsec2ROBCm0 = Det[Hamn2ROBCm0 - \[Lambda] IdentityMatrix[4]] // FullSimplify\
+\
+\>", "Input",
+ CellLabel->
+  "In[269]:=",ExpressionUUID->"e928b49a-44b4-43fe-90e8-f23b649f371c"],
+
+Cell[BoxData[
+ RowBox[{
+  SuperscriptBox["t", "4"], "-", 
+  RowBox[{"2", " ", 
+   SuperscriptBox["t", "2"], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}]}], "-", 
+  RowBox[{
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["tp", "2"], "-", 
+     SuperscriptBox["\[Gamma]", "2"], "-", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}]}]}]], "Output",
+ CellChangeTimes->{3.999335675203579*^9, 3.999580264529311*^9, 
+  3.9995802980683928`*^9},
+ CellLabel->
+  "Out[269]=",ExpressionUUID->"4d8878bc-893c-4b7f-9d6a-cd4bf1e012f6"]
+}, Open  ]],
+
+Cell["(* Discriminant of OBC characteristic polynomial. *)", "Input",
+ CellLabel->
+  "In[270]:=",ExpressionUUID->"0e6c867b-5ef7-4401-a268-fcce6d3b2b91"],
+
+Cell[CellGroupData[{
+
+Cell["disc2ROBCm0 = Discriminant[eqsec2ROBCm0, \[Lambda]] // FullSimplify", \
+"Input",
+ CellLabel->
+  "In[271]:=",ExpressionUUID->"9987948d-2012-47b8-bf51-2f406167f1e4"],
+
+Cell[BoxData[
+ RowBox[{"16", " ", 
+  SuperscriptBox[
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"4", " ", 
+      SuperscriptBox["t", "2"], " ", 
+      SuperscriptBox["tp", "2"]}], "+", 
+     SuperscriptBox["tp", "4"]}], ")"}], "2"], " ", 
+  RowBox[{"(", 
+   RowBox[{
+    SuperscriptBox["t", "4"], "-", 
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"2", " ", 
+        SuperscriptBox["t", "2"]}], "+", 
+       SuperscriptBox["tp", "2"]}], ")"}], " ", 
+     SuperscriptBox["\[Gamma]", "2"]}], "+", 
+    SuperscriptBox["\[Gamma]", "4"]}], ")"}]}]], "Output",
+ CellChangeTimes->{3.9993356752212467`*^9, 3.9995802645459337`*^9, 
+  3.9995802980803432`*^9},
+ CellLabel->
+  "Out[271]=",ExpressionUUID->"8ea2e887-f955-4730-bf23-8be476a7819d"]
+}, Open  ]],
+
+Cell["\<\
+disc2ROBCm0f[tv_, tpv_, \[Gamma]v_] := disc2ROBCm0 /. {t -> tv, tp -> tpv, \
+\[Gamma] -> \[Gamma]v}\
+\>", "Input",
+ CellLabel->
+  "In[272]:=",ExpressionUUID->"c71f9a41-be7d-4b69-b920-ae13c8da7f65"],
+
+Cell["\<\
+(* ContourPlot of the OBC EP locus for \[Gamma]=1.
+   Compare with the PBC contour to see finite-size boundary effects. *)\
+\>", "Input",
+ CellLabel->
+  "In[273]:=",ExpressionUUID->"17a2436e-af86-4e5f-8756-43370c84db78"],
+
+Cell["\<\
+If[showPlots,
+  With[{\[Gamma] = 1},
+    ContourPlot[disc2ROBCm0f[t, tp, 1] == 0, {t, -4, 4}, {tp, -4, 4},
+      PlotPoints -> 120,
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotRangePadding -> None]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[274]:=",ExpressionUUID->"2e257d83-00d7-48a4-89be-dde84e76d4dd"],
+
+Cell["(* SVD grid for N=2 OBC, m=0, \[Gamma]=1. *)", "Input",
+ CellLabel->
+  "In[275]:=",ExpressionUUID->"c15a6840-62ac-4831-91ce-7b23973803db"],
+
+Cell["\<\
+svd2OBCm0 = With[{\[Delta] = 0.23/10},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn2ROBCm0, t, tp, 1, 0]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[276]:=",ExpressionUUID->"1fbabcea-262e-42bb-bb6e-98ad8f26c666"],
+
+Cell["\<\
+(* Density plot for N=2 OBC, m=0 with analytical EP contour.
+   Controlled by showPlots. *)\
+\>", "Input",
+ CellLabel->
+  "In[277]:=",ExpressionUUID->"091389d2-1f1b-47f1-a85b-7c1076b63c66"],
+
+Cell["\<\
+If[showPlots,
+  Show[
+    ListDensityPlot[svd2OBCm0,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 24,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> {0, 2}],
+    ContourPlot[disc2ROBCm0f[t, tp, 1] == 0, {t, -5, 5}, {tp, -5, 5},
+      PlotPoints -> 100,
+      ContourStyle -> {Black, AbsoluteThickness[0.8], Dashed}]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[278]:=",ExpressionUUID->"808c5b92-0ff1-436d-addf-d5a6726b0a6e"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Case m \[NotEqual] 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 3.988440358135495*^9}, {
+  3.99958041624083*^9, 
+  3.999580417155939*^9}},ExpressionUUID->"5b8224ff-f832-4e60-9a48-\
+6d5ba995d34b"],
+
+Cell["\<\
+(* N=2 OBC, m\[NotEqual]0: the NNN on-site coupling m shifts eigenvalues and
+   modifies the EP locus in finite systems.  This is the case that shows
+   the key difference between PBC and OBC for finite size N.  *)\
+\>", "Input",
+ CellLabel->
+  "In[281]:=",ExpressionUUID->"1f07857a-8aea-428a-9386-b16699b4bfeb"],
+
+Cell["\<\
+Hamn2ROBCm = hamTB[2, 0] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0};
+MatrixForm[Hamn2ROBCm];
+(* The eigensystem is not evaluated symbolically: for m\[NotEqual]0 the OBC   \
+ Hamiltonian has no known compact closed-form eigenvalues (arXiv:2606.24705). \
+   EP detection proceeds via the discriminant and logSVDmin below. *)\
+\>", "Input",
+ CellChangeTimes->{{3.999335623485229*^9, 3.999335623487316*^9}},
+ CellLabel->
+  "In[282]:=",ExpressionUUID->"d535c02d-1f15-4b46-bda3-8f9922148c21"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+eqsec2ROBCm = Det[Hamn2ROBCm - \[Lambda] IdentityMatrix[4]] // FullSimplify\
+\>", "Input",
+ CellLabel->
+  "In[285]:=",ExpressionUUID->"ede2e3d4-d1bb-4873-a334-3deea0aa8f4b"],
+
+Cell[BoxData[
+ RowBox[{
+  SuperscriptBox["m", "4"], "+", 
+  SuperscriptBox["t", "4"], "+", 
+  RowBox[{"4", " ", "m", " ", "t", " ", "tp", " ", "\[Lambda]"}], "-", 
+  RowBox[{"2", " ", 
+   SuperscriptBox["m", "2"], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["t", "2"], "-", 
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}]}], "-", 
+  RowBox[{"2", " ", 
+   SuperscriptBox["t", "2"], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}]}], "-", 
+  RowBox[{
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["tp", "2"], "-", 
+     SuperscriptBox["\[Gamma]", "2"], "-", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}]}]}]], "Output",
+ CellChangeTimes->{3.999580264959199*^9, 3.9995802984955673`*^9},
+ CellLabel->
+  "Out[285]=",ExpressionUUID->"61168f8f-7c91-4a9e-8146-d15013e2b91f"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["disc2ROBCm = Discriminant[eqsec2ROBCm, \[Lambda]] // FullSimplify", \
+"Input",
+ CellLabel->
+  "In[286]:=",ExpressionUUID->"d2aed968-667e-4632-9f6e-7039afac3872"],
+
+Cell[BoxData[
+ RowBox[{"16", " ", 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{
+     SuperscriptBox["tp", "4"], " ", 
+     SuperscriptBox[
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"4", " ", 
+         SuperscriptBox["t", "2"]}], "+", 
+        SuperscriptBox["tp", "2"]}], ")"}], "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       SuperscriptBox["t", "4"], "-", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"2", " ", 
+           SuperscriptBox["t", "2"]}], "+", 
+          SuperscriptBox["tp", "2"]}], ")"}], " ", 
+        SuperscriptBox["\[Gamma]", "2"]}], "+", 
+       SuperscriptBox["\[Gamma]", "4"]}], ")"}]}], "+", 
+    RowBox[{"16", " ", 
+     SuperscriptBox["m", "8"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"16", " ", 
+        SuperscriptBox["t", "4"]}], "+", 
+       SuperscriptBox[
+        RowBox[{"(", 
+         RowBox[{
+          SuperscriptBox["tp", "2"], "-", 
+          RowBox[{"4", " ", 
+           SuperscriptBox["\[Gamma]", "2"]}]}], ")"}], "2"], "-", 
+       RowBox[{"8", " ", 
+        SuperscriptBox["t", "2"], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          SuperscriptBox["tp", "2"], "+", 
+          RowBox[{"4", " ", 
+           SuperscriptBox["\[Gamma]", "2"]}]}], ")"}]}]}], ")"}]}], "-", 
+    RowBox[{"8", " ", 
+     SuperscriptBox["m", "6"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"64", " ", 
+        SuperscriptBox["t", "6"]}], "-", 
+       SuperscriptBox["tp", "6"], "+", 
+       RowBox[{"32", " ", 
+        SuperscriptBox["tp", "2"], " ", 
+        SuperscriptBox["\[Gamma]", "4"]}], "-", 
+       RowBox[{"64", " ", 
+        SuperscriptBox["\[Gamma]", "6"]}], "-", 
+       RowBox[{"32", " ", 
+        SuperscriptBox["t", "4"], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          SuperscriptBox["tp", "2"], "+", 
+          RowBox[{"6", " ", 
+           SuperscriptBox["\[Gamma]", "2"]}]}], ")"}]}], "+", 
+       RowBox[{"8", " ", 
+        SuperscriptBox["t", "2"], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          SuperscriptBox["tp", "4"], "+", 
+          RowBox[{"24", " ", 
+           SuperscriptBox["\[Gamma]", "4"]}]}], ")"}]}]}], ")"}]}], "+", 
+    RowBox[{
+     SuperscriptBox["m", "4"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"256", " ", 
+        SuperscriptBox["t", "8"]}], "+", 
+       SuperscriptBox["tp", "8"], "+", 
+       RowBox[{"80", " ", 
+        SuperscriptBox["tp", "4"], " ", 
+        SuperscriptBox["\[Gamma]", "4"]}], "-", 
+       RowBox[{"384", " ", 
+        SuperscriptBox["tp", "2"], " ", 
+        SuperscriptBox["\[Gamma]", "6"]}], "+", 
+       RowBox[{"256", " ", 
+        SuperscriptBox["\[Gamma]", "8"]}], "+", 
+       RowBox[{"256", " ", 
+        SuperscriptBox["t", "6"], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          SuperscriptBox["tp", "2"], "-", 
+          RowBox[{"4", " ", 
+           SuperscriptBox["\[Gamma]", "2"]}]}], ")"}]}], "-", 
+       RowBox[{"16", " ", 
+        SuperscriptBox["t", "4"], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"9", " ", 
+           SuperscriptBox["tp", "4"]}], "+", 
+          RowBox[{"56", " ", 
+           SuperscriptBox["tp", "2"], " ", 
+           SuperscriptBox["\[Gamma]", "2"]}], "-", 
+          RowBox[{"96", " ", 
+           SuperscriptBox["\[Gamma]", "4"]}]}], ")"}]}], "+", 
+       RowBox[{"16", " ", 
+        SuperscriptBox["t", "2"], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          SuperscriptBox["tp", "6"], "-", 
+          RowBox[{"4", " ", 
+           SuperscriptBox["tp", "4"], " ", 
+           SuperscriptBox["\[Gamma]", "2"]}], "+", 
+          RowBox[{"64", " ", 
+           SuperscriptBox["tp", "2"], " ", 
+           SuperscriptBox["\[Gamma]", "4"]}], "-", 
+          RowBox[{"64", " ", 
+           SuperscriptBox["\[Gamma]", "6"]}]}], ")"}]}]}], ")"}]}], "+", 
+    RowBox[{"2", " ", 
+     SuperscriptBox["m", "2"], " ", 
+     SuperscriptBox["tp", "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "64"}], " ", 
+        SuperscriptBox["t", "8"]}], "-", 
+       RowBox[{"3", " ", 
+        SuperscriptBox["tp", "6"], " ", 
+        SuperscriptBox["\[Gamma]", "2"]}], "+", 
+       RowBox[{"20", " ", 
+        SuperscriptBox["tp", "4"], " ", 
+        SuperscriptBox["\[Gamma]", "4"]}], "-", 
+       RowBox[{"16", " ", 
+        SuperscriptBox["tp", "2"], " ", 
+        SuperscriptBox["\[Gamma]", "6"]}], "-", 
+       RowBox[{"32", " ", 
+        SuperscriptBox["t", "6"], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          SuperscriptBox["tp", "2"], "-", 
+          RowBox[{"6", " ", 
+           SuperscriptBox["\[Gamma]", "2"]}]}], ")"}]}], "+", 
+       RowBox[{"8", " ", 
+        SuperscriptBox["t", "4"], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          SuperscriptBox["tp", "4"], "+", 
+          RowBox[{"14", " ", 
+           SuperscriptBox["tp", "2"], " ", 
+           SuperscriptBox["\[Gamma]", "2"]}], "-", 
+          RowBox[{"24", " ", 
+           SuperscriptBox["\[Gamma]", "4"]}]}], ")"}]}], "+", 
+       RowBox[{
+        SuperscriptBox["t", "2"], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          SuperscriptBox["tp", "6"], "+", 
+          RowBox[{"28", " ", 
+           SuperscriptBox["tp", "4"], " ", 
+           SuperscriptBox["\[Gamma]", "2"]}], "-", 
+          RowBox[{"64", " ", 
+           SuperscriptBox["tp", "2"], " ", 
+           SuperscriptBox["\[Gamma]", "4"]}], "+", 
+          RowBox[{"64", " ", 
+           SuperscriptBox["\[Gamma]", "6"]}]}], ")"}]}]}], ")"}]}]}], 
+   ")"}]}]], "Output",
+ CellChangeTimes->{3.999580265175638*^9, 3.999580298662067*^9},
+ CellLabel->
+  "Out[286]=",ExpressionUUID->"0b113420-3112-4d24-8489-21b79f38dbc4"]
+}, Open  ]],
+
+Cell["\<\
+disc2ROBCmf[tv_, tpv_, \[Gamma]v_, mv_] := disc2ROBCm /. {t -> tv, tp -> tpv, \
+\[Gamma] -> \[Gamma]v, m -> mv}\
+\>", "Input",
+ CellLabel->
+  "In[287]:=",ExpressionUUID->"21488c0a-e4b5-4c94-8c45-9543e31526d9"],
+
+Cell["(* SVD grid for N=2 OBC, m=1, \[Gamma]=1. *)", "Input",
+ CellLabel->
+  "In[288]:=",ExpressionUUID->"370a9f9b-099d-4757-a5c2-16af8d42c299"],
+
+Cell["\<\
+svd2OBCm = With[{\[Delta] = 0.023},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn2ROBCm, t, tp, 1, 1]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[289]:=",ExpressionUUID->"bb47c419-2093-4f75-8437-a603b21ee0fd"],
+
+Cell["\<\
+(* Density plot for N=2 OBC, m=1 with analytical contour.
+   Controlled by showPlots. *)\
+\>", "Input",
+ CellLabel->
+  "In[290]:=",ExpressionUUID->"eafa59fd-ec61-413e-a65b-3c40061eb647"],
+
+Cell["\<\
+If[showPlots,
+  Show[
+    ListDensityPlot[svd2OBCm,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 24,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> Automatic],
+    ContourPlot[disc2ROBCmf[t, tp, 1, 1] == 0, {t, -5, 5}, {tp, -5, 5},
+      PlotPoints -> 100,
+      ContourStyle -> {Black, AbsoluteThickness[1.5], Dashed}]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[291]:=",ExpressionUUID->"4525be33-7a36-4ee8-8274-f9522fab7105"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Case with N = 3", "Section",
+ CellChangeTimes->{{3.988440273572053*^9, 
+  3.9884402836504097`*^9}},ExpressionUUID->"3a4c4404-5a1f-4dbc-9517-\
+8e02b0e2ca28"],
+
+Cell[CellGroupData[{
+
+Cell["Periodic boundary condition case", "Subsection",
+ CellChangeTimes->{{3.98844029114736*^9, 
+  3.9884403025389853`*^9}},ExpressionUUID->"15e3d413-059f-4971-9c5b-\
+59690723a8a7"],
+
+Cell[CellGroupData[{
+
+Cell["Case m = 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 
+  3.988440358135495*^9}},ExpressionUUID->"148f5c0b-f04b-49e5-b90e-\
+40697a19ba4b"],
+
+Cell["\<\
+(* N=3 PBC Hamiltonian at m=0: a 6x6 matrix.
+   The three quasi-momenta accessible are k=0, 2\[Pi]/3, 4\[Pi]/3, giving six
+   eigenvalues. EP conditions now depend on these three k-values.
+   Eigenvalues at m=0: \[PlusMinus]Sqrt[t^2 - t t' + t'^2 - \[Gamma]^2] \
+(double) and
+   \[PlusMinus]Sqrt[(t+t')^2 - \[Gamma]^2] (single pair). *)\
+\>", "Input",
+ CellLabel->
+  "In[296]:=",ExpressionUUID->"d5fe9ea6-6956-4ab8-9b99-e6749015ca65"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+Hamn3RPBCm0 = hamTB[3, 1] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0, m -> 0};
+MatrixForm[Hamn3RPBCm0]\
+\>", "Input",
+ CellChangeTimes->{{3.999335624370946*^9, 3.9993356243730717`*^9}},
+ CellLabel->
+  "In[297]:=",ExpressionUUID->"5ba7501d-39c6-4994-87e0-cdacd99e7d85"],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0", "0", 
+      RowBox[{"-", "tp"}]},
+     {
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0", "0", "0"},
+     {"0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0"},
+     {"0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0"},
+     {"0", "0", "0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}]},
+     {
+      RowBox[{"-", "tp"}], "0", "0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}]}
+    },
+    GridBoxAlignment->{"Columns" -> {{Center}}, "Rows" -> {{Baseline}}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output",
+ CellChangeTimes->{3.999580265613193*^9, 3.999580299087308*^9},
+ CellLabel->
+  "Out[298]//MatrixForm=",ExpressionUUID->"960c1ec8-cbc7-4949-b18a-\
+7d879ddae763"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+{en3, vec3} = Eigensystem[Hamn3RPBCm0];
+en3\
+\>", "Input",
+ CellLabel->
+  "In[299]:=",ExpressionUUID->"f37bbafb-541c-4cc7-9af3-aeae10ef2469"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"-", 
+    SqrtBox[
+     RowBox[{
+      SuperscriptBox["t", "2"], "-", 
+      RowBox[{"t", " ", "tp"}], "+", 
+      SuperscriptBox["tp", "2"], "-", 
+      SuperscriptBox["\[Gamma]", "2"]}]]}], ",", 
+   RowBox[{"-", 
+    SqrtBox[
+     RowBox[{
+      SuperscriptBox["t", "2"], "-", 
+      RowBox[{"t", " ", "tp"}], "+", 
+      SuperscriptBox["tp", "2"], "-", 
+      SuperscriptBox["\[Gamma]", "2"]}]]}], ",", 
+   SqrtBox[
+    RowBox[{
+     SuperscriptBox["t", "2"], "-", 
+     RowBox[{"t", " ", "tp"}], "+", 
+     SuperscriptBox["tp", "2"], "-", 
+     SuperscriptBox["\[Gamma]", "2"]}]], ",", 
+   SqrtBox[
+    RowBox[{
+     SuperscriptBox["t", "2"], "-", 
+     RowBox[{"t", " ", "tp"}], "+", 
+     SuperscriptBox["tp", "2"], "-", 
+     SuperscriptBox["\[Gamma]", "2"]}]], ",", 
+   RowBox[{"-", 
+    SqrtBox[
+     RowBox[{
+      SuperscriptBox["t", "2"], "+", 
+      RowBox[{"2", " ", "t", " ", "tp"}], "+", 
+      SuperscriptBox["tp", "2"], "-", 
+      SuperscriptBox["\[Gamma]", "2"]}]]}], ",", 
+   SqrtBox[
+    RowBox[{
+     SuperscriptBox["t", "2"], "+", 
+     RowBox[{"2", " ", "t", " ", "tp"}], "+", 
+     SuperscriptBox["tp", "2"], "-", 
+     SuperscriptBox["\[Gamma]", "2"]}]]}], "}"}]], "Output",
+ CellChangeTimes->{3.9995802656878967`*^9, 3.9995802991511183`*^9},
+ CellLabel->
+  "Out[300]=",ExpressionUUID->"027fd20a-3410-46f2-9152-a9a48a5c985a"]
+}, Open  ]],
+
+Cell["(* Characteristic polynomial for N=3 PBC, m=0. *)", "Input",
+ CellLabel->
+  "In[301]:=",ExpressionUUID->"f1542d90-07d8-49a8-b086-d005c229f55c"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+eqsec3RPBCm0 = Det[Hamn3RPBCm0 - \[Lambda] \
+IdentityMatrix[Length[Hamn3RPBCm0]]] // FullSimplify\
+\>", "Input",
+ CellLabel->
+  "In[302]:=",ExpressionUUID->"dd6b54af-f984-4430-b2e9-e2ffcebb2cb4"],
+
+Cell[BoxData[
+ RowBox[{"-", 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{"(", 
+     RowBox[{
+      SuperscriptBox[
+       RowBox[{"(", 
+        RowBox[{"t", "+", "tp"}], ")"}], "2"], "-", 
+      SuperscriptBox["\[Gamma]", "2"], "-", 
+      SuperscriptBox["\[Lambda]", "2"]}], ")"}], " ", 
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"-", 
+        SuperscriptBox["t", "2"]}], "+", 
+       RowBox[{"t", " ", "tp"}], "-", 
+       SuperscriptBox["tp", "2"], "+", 
+       SuperscriptBox["\[Gamma]", "2"], "+", 
+       SuperscriptBox["\[Lambda]", "2"]}], ")"}], "2"]}], ")"}]}]], "Output",
+ CellChangeTimes->{3.999580265705887*^9, 3.999580299167201*^9},
+ CellLabel->
+  "Out[302]=",ExpressionUUID->"2186f38b-3f8e-4283-b4af-418c28616a58"]
+}, Open  ]],
+
+Cell["\<\
+(* Discriminant of the N=3 PBC characteristic polynomial.
+   The discriminant factors into contributions from each accessible k value. \
+*)\
+\>", "Input",
+ CellLabel->
+  "In[303]:=",ExpressionUUID->"18ec6dd4-3a08-4157-ac08-5eabd9791fd6"],
+
+Cell[CellGroupData[{
+
+Cell["disc3RPBCm0 = Discriminant[eqsec3RPBCm0, \[Lambda]] // FullSimplify", \
+"Input",
+ CellLabel->
+  "In[304]:=",ExpressionUUID->"00f5661a-13b5-4444-9013-518dbed0ed1d"],
+
+Cell[BoxData["0"], "Output",
+ CellChangeTimes->{3.999580265714953*^9, 3.999580299176112*^9},
+ CellLabel->
+  "Out[304]=",ExpressionUUID->"6e50337a-d145-4982-b9c7-85ca77f154ff"]
+}, Open  ]],
+
+Cell["\<\
+disc3RPBCm0f[tv_, tpv_, \[Gamma]v_] := disc3RPBCm0 /. {t -> tv, tp -> tpv, \
+\[Gamma] -> \[Gamma]v}\
+\>", "Input",
+ CellLabel->
+  "In[305]:=",ExpressionUUID->"9049fbf6-5e39-4296-ac3e-c390a6c53330"],
+
+Cell["(* Solve for EP loci analytically (where possible). *)", "Input",
+ CellLabel->
+  "In[306]:=",ExpressionUUID->"84d180ad-d9da-431b-9b14-7f94cb676112"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+sol3 = Solve[(t + tp - \[Gamma]) (t + tp + \[Gamma]) == 0 ||
+              (t^2 - t tp + tp^2 - \[Gamma]^2) == 0, tp]\
+\>", "Input",
+ CellLabel->
+  "In[307]:=",ExpressionUUID->"9049fbf6-5e39-4296-ac3e-c390a6c53332"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{"tp", "\[Rule]", 
+     RowBox[{
+      RowBox[{"-", "t"}], "-", "\[Gamma]"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"tp", "\[Rule]", 
+     RowBox[{
+      RowBox[{"-", "t"}], "+", "\[Gamma]"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"tp", "\[Rule]", 
+     RowBox[{
+      FractionBox["1", "2"], " ", 
+      RowBox[{"(", 
+       RowBox[{"t", "-", 
+        SqrtBox[
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "3"}], " ", 
+           SuperscriptBox["t", "2"]}], "+", 
+          RowBox[{"4", " ", 
+           SuperscriptBox["\[Gamma]", "2"]}]}]]}], ")"}]}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"tp", "\[Rule]", 
+     RowBox[{
+      FractionBox["1", "2"], " ", 
+      RowBox[{"(", 
+       RowBox[{"t", "+", 
+        SqrtBox[
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "3"}], " ", 
+           SuperscriptBox["t", "2"]}], "+", 
+          RowBox[{"4", " ", 
+           SuperscriptBox["\[Gamma]", "2"]}]}]]}], ")"}]}]}], "}"}]}], 
+  "}"}]], "Output",
+ CellChangeTimes->{3.9995802657239113`*^9, 3.999580299187477*^9},
+ CellLabel->
+  "Out[307]=",ExpressionUUID->"f67c1797-5c50-435c-98f1-ba876954f0f3"]
+}, Open  ]],
+
+Cell["\<\
+(* EP boundary lines for N=3 PBC, m=0 (\[Gamma]=1):
+   t' = -t \[PlusMinus] \[Gamma] from (t+t')^2 = \[Gamma]^2, and two arcs \
+from t^2-tt'+t'^2 = \[Gamma]^2. *)\
+\>", "Input",
+ CellLabel->
+  "In[308]:=",ExpressionUUID->"768e5de8-e026-46e9-b340-2c10fa549d3a"],
+
+Cell["\<\
+With[{\[Gamma]val = 1},
+  line1d3 = Table[{t, -t - \[Gamma]val}, {t, -5, 5, 1/4}];
+  line2d3 = Table[{t, -t + \[Gamma]val}, {t, -5, 5, 1/4}];
+  cupd3 = Table[{t, (1/2)(t + Sqrt[-3 t^2 + 4 \[Gamma]val^2])},
+    {t, -15 \[Gamma]val, 15 \[Gamma]val, \[Gamma]val/20}];
+  cdownd3 = Table[{t, (1/2)(t - Sqrt[-3 t^2 + 4 \[Gamma]val^2])},
+    {t, -15 \[Gamma]val, 15 \[Gamma]val, \[Gamma]val/20}];
+];\
+\>", "Input",
+ CellLabel->
+  "In[309]:=",ExpressionUUID->"63b9a1a6-67ef-49f7-aabd-229577eeadb8"],
+
+Cell["(* SVD grid for N=3 PBC, m=0. *)", "Input",
+ CellLabel->
+  "In[310]:=",ExpressionUUID->"28784e03-6240-4d6d-b585-29f22ab147e3"],
+
+Cell["\<\
+svd3PBCm0 = With[{\[Delta] = 0.023},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn3RPBCm0, t, tp, 1, 0]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[311]:=",ExpressionUUID->"28f7d899-c18b-4ff0-ba65-3318573d282f"],
+
+Cell["\<\
+(* Density plot for N=3 PBC, m=0 overlaid with EP boundary curves.
+   Controlled by showPlots. *)\
+\>", "Input",
+ CellLabel->
+  "In[312]:=",ExpressionUUID->"2756b824-d399-4953-9803-3ecd000297d7"],
+
+Cell["\<\
+If[showPlots,
+  Show[
+    ListDensityPlot[svd3PBCm0,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> {0, 2}],
+    ListPlot[{line1d3, line2d3, cupd3, cdownd3},
+      Joined -> True, PlotStyle -> {Black, AbsoluteThickness[0.8], Dashed}]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[313]:=",ExpressionUUID->"8d3d5fd7-4164-4996-92ce-eac761bddd26"],
+
+Cell[CellGroupData[{
+
+Cell["sol3", "Input",
+ CellLabel->
+  "In[314]:=",ExpressionUUID->"711254d1-e534-409d-9707-3f9823aa0041"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{"tp", "\[Rule]", 
+     RowBox[{
+      RowBox[{"-", "t"}], "-", "\[Gamma]"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"tp", "\[Rule]", 
+     RowBox[{
+      RowBox[{"-", "t"}], "+", "\[Gamma]"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"tp", "\[Rule]", 
+     RowBox[{
+      FractionBox["1", "2"], " ", 
+      RowBox[{"(", 
+       RowBox[{"t", "-", 
+        SqrtBox[
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "3"}], " ", 
+           SuperscriptBox["t", "2"]}], "+", 
+          RowBox[{"4", " ", 
+           SuperscriptBox["\[Gamma]", "2"]}]}]]}], ")"}]}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"tp", "\[Rule]", 
+     RowBox[{
+      FractionBox["1", "2"], " ", 
+      RowBox[{"(", 
+       RowBox[{"t", "+", 
+        SqrtBox[
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "3"}], " ", 
+           SuperscriptBox["t", "2"]}], "+", 
+          RowBox[{"4", " ", 
+           SuperscriptBox["\[Gamma]", "2"]}]}]]}], ")"}]}]}], "}"}]}], 
+  "}"}]], "Output",
+ CellChangeTimes->{3.999580266225181*^9, 3.999580299699914*^9},
+ CellLabel->
+  "Out[314]=",ExpressionUUID->"2734bee4-b360-478a-9286-8259dfeb9725"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Case of Jordan decomposition at m = 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 
+  3.988440358135495*^9}},ExpressionUUID->"fc40feb8-44d6-4664-b2a5-\
+4c2acb89d70d"],
+
+Cell["\<\
+(* Confirm EP for N=3 PBC via Jordan decomposition at (t, t', \[Gamma]) = (1, \
+1, 1).
+   At t = t' = \[Gamma] = 1 the mode at k=2\[Pi]/3 hits an EP since
+   t^2 - tt' + t'^2 = 1 = \[Gamma]^2. *)\
+\>", "Input",
+ CellLabel->
+  "In[317]:=",ExpressionUUID->"7e554eae-54b5-49d7-be7d-a064efb7e4ad"],
+
+Cell["\<\
+{Sjordan3, Jjordan3} = JordanDecomposition[
+  N[Hamn3RPBCm0 /. {t -> 1, tp -> 1, \[Gamma] -> 1, \[Epsilon]p -> 0, \
+\[Epsilon]m -> 0}]];
+If[showPlots, MatrixForm[Jjordan3], Null]\
+\>", "Input",
+ CellLabel->
+  "In[318]:=",ExpressionUUID->"c9e9960a-7fe5-444f-bdf5-88581f7c9190"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Open boundary condition case", "Subsection",
+ CellChangeTimes->{{3.98844029114736*^9, 
+  3.9884403025389853`*^9}},ExpressionUUID->"dc6bfe15-8932-47ab-9b8b-\
+d642b095348d"],
+
+Cell[CellGroupData[{
+
+Cell["Case m = 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 
+  3.988440358135495*^9}},ExpressionUUID->"6ba9151b-97ee-4c04-8a67-\
+b2e938197fca"],
+
+Cell["\<\
+(* N=3 OBC at m=0. Boundary conditions remove the PBC wrap-around hoppings.
+   The OBC eigenvalues differ from PBC and surface states can appear. *)\
+\>", "Input",
+ CellLabel->
+  "In[322]:=",ExpressionUUID->"4ce5882f-849b-465c-b305-7ccbf63cd426"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+Hamn3ROBCm0 = hamTB[3, 0] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0, m -> 0};
+MatrixForm[Hamn3ROBCm0]\
+\>", "Input",
+ CellChangeTimes->{{3.999335625016334*^9, 3.999335625018442*^9}},
+ CellLabel->
+  "In[323]:=",ExpressionUUID->"dfbe4f60-c477-48b2-a8d7-40862df2285d"],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0", "0", "0"},
+     {
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0", "0", "0"},
+     {"0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0"},
+     {"0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0"},
+     {"0", "0", "0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}]},
+     {"0", "0", "0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}]}
+    },
+    GridBoxAlignment->{"Columns" -> {{Center}}, "Rows" -> {{Baseline}}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output",
+ CellChangeTimes->{3.9995802662403383`*^9, 3.999580299724778*^9},
+ CellLabel->
+  "Out[324]//MatrixForm=",ExpressionUUID->"8e857954-0d3c-4f32-adc9-\
+915d7fb0fe95"]
+}, Open  ]],
+
+Cell["{en3OBC, vec3OBC} = Eigensystem[Hamn3ROBCm0];", "Input",
+ CellLabel->
+  "In[325]:=",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d5"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+eqsec3ROBCm0 = Det[Hamn3ROBCm0 - \[Lambda] IdentityMatrix[6]] // FullSimplify\
+\
+\>", "Input",
+ CellLabel->
+  "In[326]:=",ExpressionUUID->"8c7722e6-b339-41f2-b7da-42de8c65d231"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"-", 
+   SuperscriptBox["t", "6"]}], "+", 
+  RowBox[{"3", " ", 
+   SuperscriptBox["t", "4"], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}]}], "+", 
+  RowBox[{
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}], " ", 
+   SuperscriptBox[
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"-", 
+       SuperscriptBox["tp", "2"]}], "+", 
+      SuperscriptBox["\[Gamma]", "2"], "+", 
+      SuperscriptBox["\[Lambda]", "2"]}], ")"}], "2"]}], "+", 
+  RowBox[{
+   SuperscriptBox["t", "2"], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["\[Gamma]", "2"], "+", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"2", " ", 
+      SuperscriptBox["tp", "2"]}], "-", 
+     RowBox[{"3", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        SuperscriptBox["\[Gamma]", "2"], "+", 
+        SuperscriptBox["\[Lambda]", "2"]}], ")"}]}]}], ")"}]}]}]], "Output",
+ CellChangeTimes->{3.9995802663701067`*^9, 3.999580299851115*^9},
+ CellLabel->
+  "Out[326]=",ExpressionUUID->"7104518e-a8a6-4c7c-817d-93a7e270f35d"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["disc3ROBCm0 = Discriminant[eqsec3ROBCm0, \[Lambda]] // FullSimplify", \
+"Input",
+ CellLabel->
+  "In[327]:=",ExpressionUUID->"0c92f4e9-fa0d-4173-8391-49e186b7ad48"],
+
+Cell[BoxData[
+ RowBox[{"64", " ", 
+  SuperscriptBox["t", "4"], " ", 
+  SuperscriptBox["tp", "12"], " ", 
+  SuperscriptBox[
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"32", " ", 
+      SuperscriptBox["t", "4"]}], "+", 
+     RowBox[{"13", " ", 
+      SuperscriptBox["t", "2"], " ", 
+      SuperscriptBox["tp", "2"]}], "+", 
+     RowBox[{"4", " ", 
+      SuperscriptBox["tp", "4"]}]}], ")"}], "2"], " ", 
+  RowBox[{"(", 
+   RowBox[{
+    SuperscriptBox["t", "6"], "-", 
+    RowBox[{"3", " ", 
+     SuperscriptBox["t", "4"], " ", 
+     SuperscriptBox["\[Gamma]", "2"]}], "-", 
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", 
+         SuperscriptBox["tp", "2"]}], " ", "\[Gamma]"}], "+", 
+       SuperscriptBox["\[Gamma]", "3"]}], ")"}], "2"], "+", 
+    RowBox[{
+     SuperscriptBox["t", "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "2"}], " ", 
+        SuperscriptBox["tp", "2"], " ", 
+        SuperscriptBox["\[Gamma]", "2"]}], "+", 
+       RowBox[{"3", " ", 
+        SuperscriptBox["\[Gamma]", "4"]}]}], ")"}]}]}], ")"}]}]], "Output",
+ CellChangeTimes->{3.999580266394656*^9, 3.9995802998701344`*^9},
+ CellLabel->
+  "Out[327]=",ExpressionUUID->"7c9fffff-5421-48e7-8166-f40d2ae201c6"]
+}, Open  ]],
+
+Cell["\<\
+disc3ROBCm0f[tv_, tpv_, \[Gamma]v_] := disc3ROBCm0 /. {t -> tv, tp -> tpv, \
+\[Gamma] -> \[Gamma]v}\
+\>", "Input",
+ CellLabel->
+  "In[328]:=",ExpressionUUID->"94ab4bf9-79e5-4466-8c74-c31644a003fc"],
+
+Cell["(* SVD grid for N=3 OBC, m=0, \[Gamma]=1. *)", "Input",
+ CellLabel->
+  "In[329]:=",ExpressionUUID->"5d735797-3a3d-4400-8dc4-4fdf10c774f1"],
+
+Cell["\<\
+svd3OBCm0 = With[{\[Delta] = 0.023},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn3ROBCm0, t, tp, 1, 0]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[330]:=",ExpressionUUID->"2b763bdb-6f2d-47ce-8352-fe4c6b2abf12"],
+
+Cell["\<\
+(* Density plot for N=3 OBC, m=0. Controlled by showPlots. *)\
+\>", "Input",
+ CellLabel->
+  "In[331]:=",ExpressionUUID->"e1eadbb6-6ae7-495b-a4b9-da1816f7a5e9"],
+
+Cell["\<\
+If[showPlots,
+  Show[Null
+    ListDensityPlot[svd3OBCm0,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> {0, 2}],
+    ContourPlot[disc3ROBCm0f[t, tp, 1] == 0, {t, -5, 5}, {tp, -5, 5},
+      PlotPoints -> 100,
+      ContourStyle -> {Black, AbsoluteThickness[0.8], Dashed}]],
+  Null]\
+\>", "Input",
+ CellChangeTimes->{{3.999580429308269*^9, 
+  3.999580430057658*^9}},ExpressionUUID->"6d5f8eb8-2490-4ab7-a37d-\
+436224479158"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Case m \[NotEqual] 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 3.988440358135495*^9}, {
+  3.9995804234064217`*^9, 
+  3.999580424271467*^9}},ExpressionUUID->"242e6abb-2625-415f-acf0-\
+de247bd8a2e5"],
+
+Cell["(* N=3 OBC, m\[NotEqual]0. *)", "Input",
+ CellLabel->
+  "In[335]:=",ExpressionUUID->"4ec89589-e20f-4fa9-a34d-588147b942ab"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+Hamn3ROBCm = hamTB[3, 0] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0};
+MatrixForm[Hamn3ROBCm]\
+\>", "Input",
+ CellChangeTimes->{{3.999335625674492*^9, 3.9993356256758127`*^9}},
+ CellLabel->
+  "In[336]:=",ExpressionUUID->"5ba7501d-39c6-4994-87e0-cdacd99e7d86"],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{"-", "m"}], "0", "0", "0"},
+     {
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"-", "m"}], "0", "0"},
+     {
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{"-", "m"}], "0"},
+     {"0", 
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"-", "m"}]},
+     {"0", "0", 
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}]},
+     {"0", "0", "0", 
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}]}
+    },
+    GridBoxAlignment->{"Columns" -> {{Center}}, "Rows" -> {{Baseline}}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output",
+ CellChangeTimes->{3.999580266933569*^9, 3.999580300400146*^9},
+ CellLabel->
+  "Out[337]//MatrixForm=",ExpressionUUID->"f40594f4-311a-4e79-9e2d-\
+f5c504e3aa9a"]
+}, Open  ]],
+
+Cell["\<\
+svd3OBCm = With[{\[Delta] = 0.023},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn3ROBCm, t, tp, 1, 1]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[338]:=",ExpressionUUID->"f37bbafb-541c-4cc7-9af3-aeae10ef2470"],
+
+Cell["\<\
+If[showPlots,
+  Show[
+    ListDensityPlot[svd3OBCm,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> Automatic],
+    ContourPlot[disc3ROBCm0f[t, tp, 1] == 0, {t, -5, 5}, {tp, -5, 5},
+      PlotPoints -> 100,
+      ContourStyle -> {Black, AbsoluteThickness[0.8], Dashed}]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[339]:=",ExpressionUUID->"f37bbafb-541c-4cc7-9af3-aeae10ef2471"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Case with N = 4", "Section",
+ CellChangeTimes->{{3.988440273572053*^9, 
+  3.9884402836504097`*^9}},ExpressionUUID->"66351716-b3e0-4898-90cd-\
+35f9158b866d"],
+
+Cell[CellGroupData[{
+
+Cell["Periodic boundary condition case", "Subsection",
+ CellChangeTimes->{{3.98844029114736*^9, 
+  3.9884403025389853`*^9}},ExpressionUUID->"993f8276-69fb-46e7-9e18-\
+b46f3932d877"],
+
+Cell[CellGroupData[{
+
+Cell["Case m = 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 
+  3.988440358135495*^9}},ExpressionUUID->"71886352-81c9-4900-adbb-\
+9c755f6ef001"],
+
+Cell["\<\
+(* N=4 PBC Hamiltonian: 8x8 matrix.
+   Four quasi-momenta: k = 0, \[Pi]/2, \[Pi], 3\[Pi]/2.
+   EP conditions involve each k independently. *)\
+\>", "Input",
+ CellLabel->
+  "In[344]:=",ExpressionUUID->"8ec2e909-cb1f-43cc-be08-85bad19490e9"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+Hamn4RPBCm0 = hamTB[4, 1] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0, m -> 0};
+MatrixForm[Hamn4RPBCm0]\
+\>", "Input",
+ CellChangeTimes->{{3.9993356263774767`*^9, 3.999335626378996*^9}},
+ CellLabel->
+  "In[345]:=",ExpressionUUID->"dfbe4f60-c477-48b2-a8d7-40862df2285e"],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0", "0", "0", "0", 
+      RowBox[{"-", "tp"}]},
+     {
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0", "0", "0", "0", "0"},
+     {"0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0", "0", "0"},
+     {"0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0", "0", "0"},
+     {"0", "0", "0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0"},
+     {"0", "0", "0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0"},
+     {"0", "0", "0", "0", "0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}]},
+     {
+      RowBox[{"-", "tp"}], "0", "0", "0", "0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}]}
+    },
+    GridBoxAlignment->{"Columns" -> {{Center}}, "Rows" -> {{Baseline}}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output",
+ CellChangeTimes->{3.999580267487311*^9, 3.999580300954136*^9},
+ CellLabel->
+  "Out[346]//MatrixForm=",ExpressionUUID->"c61bb349-ce00-421b-afd7-\
+80a85c511d84"]
+}, Open  ]],
+
+Cell["{en4, vec4} = Eigensystem[Hamn4RPBCm0];", "Input",
+ CellLabel->
+  "In[347]:=",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d6"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+eqsec4RPBCm0 = Det[Hamn4RPBCm0 - \[Lambda] IdentityMatrix[8]] // FullSimplify\
+\
+\>", "Input",
+ CellLabel->
+  "In[348]:=",ExpressionUUID->"8c7722e6-b339-41f2-b7da-42de8c65d232"],
+
+Cell[BoxData[
+ RowBox[{
+  SuperscriptBox[
+   RowBox[{"(", 
+    RowBox[{
+     SuperscriptBox["t", "2"], "+", 
+     SuperscriptBox["tp", "2"], "-", 
+     SuperscriptBox["\[Gamma]", "2"], "-", 
+     SuperscriptBox["\[Lambda]", "2"]}], ")"}], "2"], " ", 
+  RowBox[{"(", 
+   RowBox[{
+    SuperscriptBox["t", "4"], "+", 
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"-", 
+        SuperscriptBox["tp", "2"]}], "+", 
+       SuperscriptBox["\[Gamma]", "2"], "+", 
+       SuperscriptBox["\[Lambda]", "2"]}], ")"}], "2"], "-", 
+    RowBox[{"2", " ", 
+     SuperscriptBox["t", "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       SuperscriptBox["tp", "2"], "+", 
+       SuperscriptBox["\[Gamma]", "2"], "+", 
+       SuperscriptBox["\[Lambda]", "2"]}], ")"}]}]}], ")"}]}]], "Output",
+ CellChangeTimes->{3.9995802676580763`*^9, 3.99958030112614*^9},
+ CellLabel->
+  "Out[348]=",ExpressionUUID->"5a2d31f7-5921-4fdb-b2b0-5fbe16c7002e"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["disc4RPBCm0 = Discriminant[eqsec4RPBCm0, \[Lambda]] // FullSimplify", \
+"Input",
+ CellLabel->
+  "In[349]:=",ExpressionUUID->"0c92f4e9-fa0d-4173-8391-49e186b7ad49"],
+
+Cell[BoxData["0"], "Output",
+ CellChangeTimes->{3.999580267660308*^9, 3.999580301128331*^9},
+ CellLabel->
+  "Out[349]=",ExpressionUUID->"324f4e51-1784-414c-9291-bdcec2008a7f"]
+}, Open  ]],
+
+Cell["\<\
+disc4RPBCm0f[tv_, tpv_, \[Gamma]v_] := disc4RPBCm0 /. {t -> tv, tp -> tpv, \
+\[Gamma] -> \[Gamma]v}\
+\>", "Input",
+ CellLabel->
+  "In[350]:=",ExpressionUUID->"94ab4bf9-79e5-4466-8c74-c31644a003fd"],
+
+Cell["(* SVD grid for N=4 PBC, m=0. *)", "Input",
+ CellLabel->
+  "In[351]:=",ExpressionUUID->"2f1cb04b-da6a-44fd-b5e5-b524d682821b"],
+
+Cell["\<\
+svd4PBCm0 = With[{\[Delta] = 0.023},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn4RPBCm0, t, tp, 1, 0]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[352]:=",ExpressionUUID->"2b763bdb-6f2d-47ce-8352-fe4c6b2abf13"],
+
+Cell["\<\
+(* Density plot for N=4 PBC, m=0. Controlled by showPlots. *)\
+\>", "Input",
+ CellLabel->
+  "In[353]:=",ExpressionUUID->"02269668-e701-47b5-9565-ca9e6eeb31be"],
+
+Cell["\<\
+If[showPlots,
+  Show[
+    ListDensityPlot[svd4PBCm0,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> {0, 2}],
+    ContourPlot[disc4RPBCm0f[t, tp, 1] == 0, {t, -5, 5}, {tp, -5, 5},
+      PlotPoints -> 100,
+      ContourStyle -> {Black, AbsoluteThickness[0.8], Dashed}]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[354]:=",ExpressionUUID->"6d5f8eb8-2490-4ab7-a37d-436224479159"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Case of Jordan decomposition at m = 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 
+  3.988440358135495*^9}},ExpressionUUID->"7b1975a5-e854-41ce-b483-\
+15a9e5c50302"],
+
+Cell["(* N=4 Jordan decomposition at a representative EP. *)", "Input",
+ CellLabel->
+  "In[357]:=",ExpressionUUID->"97171518-00ed-47cc-a121-e9bdb3622e06"],
+
+Cell["\<\
+{Sjordan4, Jjordan4} = JordanDecomposition[
+  N[Hamn4RPBCm0 /. {t -> 1/2, tp -> 1, \[Gamma] -> 1/2, \[Epsilon]p -> 0, \
+\[Epsilon]m -> 0}]];
+If[showPlots, MatrixForm[Jjordan4], Null]\
+\>", "Input",
+ CellLabel->
+  "In[358]:=",ExpressionUUID->"87c820a5-2a57-4ad8-941a-9801fc8609a1"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Open boundary condition case", "Subsection",
+ CellChangeTimes->{{3.98844029114736*^9, 
+  3.9884403025389853`*^9}},ExpressionUUID->"3e9263d2-1563-4627-9070-\
+2f343c5b1894"],
+
+Cell[CellGroupData[{
+
+Cell["Case m = 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 
+  3.988440358135495*^9}},ExpressionUUID->"917999bc-450a-4590-905f-\
+d7a35983b9ad"],
+
+Cell["(* N=4 OBC at m=0. *)", "Input",
+ CellLabel->
+  "In[362]:=",ExpressionUUID->"8e8a0ecd-0c42-4f6e-9204-eb28a6d2694f"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+Hamn4ROBCm0 = hamTB[4, 0] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0, m -> 0};
+MatrixForm[Hamn4ROBCm0]\
+\>", "Input",
+ CellChangeTimes->{{3.999335627007653*^9, 3.999335627009103*^9}},
+ CellLabel->
+  "In[363]:=",ExpressionUUID->"dfbe4f60-c477-48b2-a8d7-40862df2285f"],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0", "0", "0", "0", "0"},
+     {
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0", "0", "0", "0", "0"},
+     {"0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0", "0", "0"},
+     {"0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0", "0", "0"},
+     {"0", "0", "0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], "0", "0"},
+     {"0", "0", "0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], "0"},
+     {"0", "0", "0", "0", "0", 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}]},
+     {"0", "0", "0", "0", "0", "0", 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}]}
+    },
+    GridBoxAlignment->{"Columns" -> {{Center}}, "Rows" -> {{Baseline}}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output",
+ CellChangeTimes->{3.999580268336561*^9, 3.999580301795793*^9},
+ CellLabel->
+  "Out[364]//MatrixForm=",ExpressionUUID->"32f719ef-a2b8-4a0c-9954-\
+5bff3dfed666"]
+}, Open  ]],
+
+Cell["\<\
+svd4OBCm0 = With[{\[Delta] = 0.023},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn4ROBCm0, t, tp, 1, 0]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[365]:=",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d7"],
+
+Cell["\<\
+If[showPlots,
+  ListDensityPlot[svd4OBCm0,
+    PlotRangePadding -> None,
+    ColorFunction -> \"AvocadoColors\",
+    FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+    PlotLegends -> BarLegend[Automatic,
+      LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                      FontColor -> Black},
+      LegendLabel -> Style[\"log10 \[Kappa](U)\",
+        FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+    PlotRange -> {0, 2}],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[366]:=",ExpressionUUID->"9237914d-3087-4a84-8565-062eba674abf"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Case m \[NotEqual] 0", "Subsubsection",
+ CellChangeTimes->{{3.988440349006702*^9, 3.988440358135495*^9}, {
+  3.999580385123138*^9, 
+  3.999580386853956*^9}},ExpressionUUID->"fbdfd191-d76e-43c3-838f-\
+00a77598371a"],
+
+Cell["(* N=4 OBC, m\[NotEqual]0. *)", "Input",
+ CellLabel->
+  "In[369]:=",ExpressionUUID->"2bb12e34-bd40-4557-b1e4-fcd4e4b84503"],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+Hamn4ROBCm = hamTB[4, 0] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0};
+MatrixForm[Hamn4ROBCm]\
+\>", "Input",
+ CellChangeTimes->{{3.9993356275954237`*^9, 3.999335627596937*^9}},
+ CellLabel->
+  "In[370]:=",ExpressionUUID->"80b7c814-0387-4cea-a623-2a6f884b48db"],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{"-", "m"}], "0", "0", "0", "0", "0"},
+     {
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"-", "m"}], "0", "0", "0", "0"},
+     {
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{"-", "m"}], "0", "0", "0"},
+     {"0", 
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"-", "m"}], "0", "0"},
+     {"0", "0", 
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{"-", "m"}], "0"},
+     {"0", "0", "0", 
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"-", "m"}]},
+     {"0", "0", "0", "0", 
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "tp"}], 
+      RowBox[{"\[ImaginaryI]", " ", "\[Gamma]"}], 
+      RowBox[{"-", "t"}]},
+     {"0", "0", "0", "0", "0", 
+      RowBox[{"-", "m"}], 
+      RowBox[{"-", "t"}], 
+      RowBox[{
+       RowBox[{"-", "\[ImaginaryI]"}], " ", "\[Gamma]"}]}
+    },
+    GridBoxAlignment->{"Columns" -> {{Center}}, "Rows" -> {{Baseline}}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output",
+ CellChangeTimes->{3.999580269027515*^9, 3.999580302491433*^9},
+ CellLabel->
+  "Out[371]//MatrixForm=",ExpressionUUID->"2ee86c25-0096-4a0b-875e-\
+9abad27ce0c7"]
+}, Open  ]],
+
+Cell["\<\
+svd4OBCm = With[{\[Delta] = 0.023},
+  Flatten[ParallelTable[
+    {t, tp, logSVDmin[Hamn4ROBCm, t, tp, 1, 1]},
+    {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1]];\
+\>", "Input",
+ CellLabel->
+  "In[372]:=",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d8"],
+
+Cell["\<\
+If[showPlots,
+  ListDensityPlot[svd4OBCm,
+    PlotRangePadding -> None,
+    ColorFunction -> \"AvocadoColors\",
+    FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+    PlotLegends -> BarLegend[Automatic,
+      LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                      FontColor -> Black},
+      LegendLabel -> Style[\"log10 \[Kappa](U)\",
+        FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+    PlotRange -> Automatic],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[373]:=",ExpressionUUID->"9dc48558-e140-4b74-b070-aca68bc53e07"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["N = 9 & 10 case, m \[NotEqual] 0", "Section",
+ CellChangeTimes->{{3.988440273572053*^9, 3.9884402836504097`*^9}, {
+  3.999580358512536*^9, 
+  3.9995803608120537`*^9}},ExpressionUUID->"682b1df4-d193-4305-81db-\
+295cbf441135"],
+
+Cell["\<\
+(* Large-system cases N=9 and N=10 with m\[NotEqual]0.
+   At larger N the finite-size EP pattern approaches the bulk limit more \
+closely.
+   We compute logSVDmin on a coarser grid to manage run-time.
+   Density plots are most meaningful here since analytical formulae become
+   unwieldy. All plots are controlled by showPlots. *)\
+\>", "Input",
+ CellLabel->
+  "In[378]:=",ExpressionUUID->"79390146-49da-47da-8089-f33f82e152f6"],
+
+Cell[CellGroupData[{
+
+Cell["Periodic boundary condition case", "Subsection",
+ CellChangeTimes->{{3.98844029114736*^9, 
+  3.9884403025389853`*^9}},ExpressionUUID->"682b1df4-d193-4305-81db-\
+295cbf441136"],
+
+Cell["(* N=9 PBC, m=1. *)", "Input",
+ CellLabel->
+  "In[379]:=",ExpressionUUID->"205bdc71-951a-43d7-a76a-6522ec6cbd60"],
+
+Cell["Hamn9RPBCm = hamTB[9, 1] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0};", \
+"Input",
+ CellLabel->
+  "In[380]:=",ExpressionUUID->"392a8725-4a94-4aea-abda-7f2b707a668c"],
+
+Cell["\<\
+(* ContourPlot of logSVDmin for N=9 PBC, m=1. Controlled by showPlots. *)\
+\>", "Input",
+ CellLabel->
+  "In[381]:=",ExpressionUUID->"c1e4f208-9cd0-42d7-a9f1-f081a913ab95"],
+
+Cell["\<\
+If[showPlots,
+  With[{\[Delta] = 0.05},
+    svd9PBCm = Flatten[ParallelTable[
+      {t, tp, logSVDmin[Hamn9RPBCm, t, tp, 1, 1]},
+      {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1];
+    ListDensityPlot[svd9PBCm,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> {0, 2}]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[382]:=",ExpressionUUID->"3e129198-b31f-4125-981d-af1d1efad77a"],
+
+Cell["(* N=10 PBC, m=1. *)", "Input",
+ CellLabel->
+  "In[383]:=",ExpressionUUID->"30d5e547-2b89-48df-a2a4-100105cabac4"],
+
+Cell["Hamn10RPBCm = hamTB[10, 1] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0};", \
+"Input",
+ CellLabel->
+  "In[384]:=",ExpressionUUID->"073bea2e-c571-45a0-be49-9888fd7a39c0"],
+
+Cell["\<\
+If[showPlots,
+  With[{\[Delta] = 0.05},
+    svd10PBCm = Flatten[ParallelTable[
+      {t, tp, logSVDmin[Hamn10RPBCm, t, tp, 1, 1]},
+      {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1];
+    ListDensityPlot[svd10PBCm,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> {0, 2}]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[385]:=",ExpressionUUID->"6d688ce4-b6e1-4ae2-907b-0ac4b68637b7"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Open boundary condition case", "Subsection",
+ CellChangeTimes->{{3.98844029114736*^9, 
+  3.9884403025389853`*^9}},ExpressionUUID->"682b1df4-d193-4305-81db-\
+295cbf441137"],
+
+Cell["(* N=9 OBC, m=1. *)", "Input",
+ CellLabel->
+  "In[388]:=",ExpressionUUID->"98907971-3941-4fab-85bc-2c6f35c64a96"],
+
+Cell["Hamn9ROBCm = hamTB[9, 0] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0};", \
+"Input",
+ CellLabel->
+  "In[389]:=",ExpressionUUID->"43fe8e11-e4ad-4fb6-a054-5e29d3e647c9"],
+
+Cell["\<\
+If[showPlots,
+  With[{\[Delta] = 0.05},
+    svd9OBCm = Flatten[ParallelTable[
+      {t, tp, logSVDmin[Hamn9ROBCm, t, tp, 1, 1]},
+      {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1];
+    ListDensityPlot[svd9OBCm,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> Automatic]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[390]:=",ExpressionUUID->"7e5c1e02-590f-41fe-bdf0-409aacf7b161"],
+
+Cell["(* N=10 OBC, m=1. *)", "Input",
+ CellLabel->
+  "In[391]:=",ExpressionUUID->"3e4cf9dc-714a-4e43-8f45-4e2e3e687e77"],
+
+Cell["Hamn10ROBCm = hamTB[10, 0] /. {\[Epsilon]p -> 0, \[Epsilon]m -> 0};", \
+"Input",
+ CellLabel->
+  "In[392]:=",ExpressionUUID->"71c886c2-0d03-41be-88cc-fd16ac5aeb89"],
+
+Cell["\<\
+If[showPlots,
+  With[{\[Delta] = 0.05},
+    svd10OBCm = Flatten[ParallelTable[
+      {t, tp, logSVDmin[Hamn10ROBCm, t, tp, 1, 1]},
+      {t, -5, 5, \[Delta]}, {tp, -5, 5, \[Delta]}], 1];
+    ListDensityPlot[svd10OBCm,
+      PlotRangePadding -> None,
+      ColorFunction -> \"AvocadoColors\",
+      FrameLabel -> {\"t/\[Gamma]\", \"t'/\[Gamma]\"},
+      PlotLegends -> BarLegend[Automatic,
+        LabelStyle -> {FontFamily -> \"Latin Modern Roman\", FontSize -> 26,
+                        FontColor -> Black},
+        LegendLabel -> Style[\"log10 \[Kappa](U)\",
+          FontFamily -> \"Latin Modern Roman\", FontSize -> 26]],
+      PlotRange -> Automatic]],
+  Null]\
+\>", "Input",
+ CellLabel->
+  "In[393]:=",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d9"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{1435, 911},
+WindowMargins->{{12, Automatic}, {Automatic, 24}},
+Magnification:>1.5 Inherited,
+FrontEndVersion->"15.0 for Mac OS X ARM (64-bit) (July 2, 2026)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"3374d497-ef55-4b33-b5cd-89b8ebb658cc"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[576, 22, 255, 6, 326, "Title",ExpressionUUID->"712c9696-11c1-442b-b40b-3361f4bac19f"],
+Cell[834, 30, 185, 6, 125, "Subtitle",ExpressionUUID->"0cfce0a5-831b-42a3-8b22-62ef1b8bf110"],
+Cell[1022, 38, 792, 17, 411, "Text",ExpressionUUID->"1e8fd795-4257-4221-90e7-5383561a448e"],
+Cell[1817, 57, 110, 2, 44, "Input",ExpressionUUID->"0c838895-790d-471f-8e52-89f359bcdefc"],
+Cell[1930, 61, 308, 7, 96, "Input",ExpressionUUID->"904af919-50b3-4110-b236-8030f409573a"],
+Cell[2241, 70, 280, 6, 70, "Input",ExpressionUUID->"14d9d89f-8237-4d48-b0cf-7f5cba3f528a"],
+Cell[2524, 78, 1311, 21, 226, "Input",ExpressionUUID->"2d3a2475-17b4-4ae9-8888-fb3b25187131"],
+Cell[3838, 101, 663, 13, 247, "Text",ExpressionUUID->"ab693d14-97b3-466f-9c34-6d7aa2da23ef"],
+Cell[4504, 116, 801, 16, 330, "Input",ExpressionUUID->"ac24f86d-661f-4c15-8d27-3a177c16464a"],
+Cell[5308, 134, 1357, 32, 616, "Input",ExpressionUUID->"15ca0f2f-362f-4c50-9508-f615f2533a09"],
+Cell[6668, 168, 874, 17, 356, "Input",ExpressionUUID->"dfdb7a8e-47b6-44d4-ae9f-eb7bebb394b0"],
+Cell[7545, 187, 449, 10, 174, "Input",ExpressionUUID->"ab419e2d-4f90-49f1-82e9-2ba1da10aa34"],
+Cell[CellGroupData[{
+Cell[8019, 201, 162, 3, 99, "Section",ExpressionUUID->"6975cc7d-32cb-471f-8328-1a4c563f527d"],
+Cell[CellGroupData[{
+Cell[8206, 208, 181, 3, 79, "Subsection",ExpressionUUID->"d16fca0b-6a40-4721-9414-b012e99245f5"],
+Cell[CellGroupData[{
+Cell[8412, 215, 161, 3, 65, "Subsubsection",ExpressionUUID->"9d05c5d8-9ca6-4cf4-97e2-6979096faf15"],
+Cell[8576, 220, 511, 11, 174, "Input",ExpressionUUID->"1ed0defa-da08-4ba6-8974-499fdf0e9c7e"],
+Cell[9090, 233, 465, 11, 174, "Input",ExpressionUUID->"0813b5e7-b3fd-4516-b451-7426b275b1ef"],
+Cell[9558, 246, 309, 7, 96, "Input",ExpressionUUID->"f1a99eb5-4e8a-461f-b9a0-0728376f0dd9"],
+Cell[CellGroupData[{
+Cell[9892, 257, 109, 2, 44, "Input",ExpressionUUID->"4f0e863f-1784-4e48-9977-cd29332b4237"],
+Cell[10004, 261, 1033, 33, 58, "Output",ExpressionUUID->"ea8501b6-7633-4a2d-98bf-7938bb146084"]
+}, Open  ]],
+Cell[11052, 297, 246, 6, 70, "Input",ExpressionUUID->"26cb818d-6e8f-48d2-8d03-d84dfacef5e1"],
+Cell[CellGroupData[{
+Cell[11323, 307, 187, 5, 44, "Input",ExpressionUUID->"89fce609-1e01-4300-98a9-7419c519e986"],
+Cell[11513, 314, 719, 20, 52, "Output",ExpressionUUID->"378025be-4699-4dd3-b911-cb166545aea0"]
+}, Open  ]],
+Cell[12247, 337, 415, 9, 122, "Input",ExpressionUUID->"6ea47254-6e35-4250-a646-a9e4bbfe76da"],
+Cell[CellGroupData[{
+Cell[12687, 350, 169, 3, 44, "Input",ExpressionUUID->"84128076-6819-4519-9527-76b34b75f0b2"],
+Cell[12859, 355, 606, 15, 50, "Output",ExpressionUUID->"2c8c687c-5dcc-48af-b3bb-5b09317fdb11"]
+}, Open  ]],
+Cell[13480, 373, 151, 2, 44, "Input",ExpressionUUID->"ffc2959b-a854-47b0-8f86-4e7e41ae381e"],
+Cell[13634, 377, 207, 5, 44, "Input",ExpressionUUID->"d1f6eed2-5bd1-4732-b822-b2375e8fe4b1"],
+Cell[13844, 384, 359, 8, 96, "Input",ExpressionUUID->"0891fbd9-19e9-4feb-b83d-8c96c3870c07"],
+Cell[14206, 394, 304, 9, 174, "Input",ExpressionUUID->"8cd69ab0-a641-49d6-b64e-7941d463a9f2"],
+Cell[14513, 405, 319, 7, 96, "Input",ExpressionUUID->"c5ead752-a88d-4c0c-a5f1-44d8efc0be87"],
+Cell[14835, 414, 276, 7, 122, "Input",ExpressionUUID->"9b156c22-0468-422e-87cf-4f8b2201c92c"],
+Cell[15114, 423, 208, 5, 70, "Input",ExpressionUUID->"8a0c7c4a-73bb-4904-b981-cb27a6ca224f"],
+Cell[15325, 430, 767, 19, 434, "Input",ExpressionUUID->"36a38c28-8167-4cd2-ba45-4e78ae567e92"],
+Cell[16095, 451, 159, 2, 44, "Input",ExpressionUUID->"be60c75f-0d9f-472b-b82f-863686d97de4"],
+Cell[CellGroupData[{
+Cell[16279, 457, 123, 2, 44, "Input",ExpressionUUID->"8b0894e2-0148-45f7-a9da-b9cf936524ff"],
+Cell[16405, 461, 1181, 36, 141, "Output",ExpressionUUID->"6162d2a1-097d-4f31-80cc-9f6dfd2d6edf"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[17635, 503, 220, 4, 65, "Subsubsection",ExpressionUUID->"4291fd7d-730e-4960-b28d-d5525e95f697"],
+Cell[17858, 509, 492, 10, 148, "Input",ExpressionUUID->"0bff471d-cd49-4d09-b0e9-313cb8f3edc4"],
+Cell[18353, 521, 485, 9, 96, "Input",ExpressionUUID->"0813b5e7-b3fd-4516-b451-7426b275b2ef"],
+Cell[18841, 532, 116, 2, 44, "Input",ExpressionUUID->"affe97c5-3adc-4b4d-b119-9517640b1c82"],
+Cell[18960, 536, 150, 2, 44, "Input",ExpressionUUID->"74ddf3c7-01d8-4d1c-8489-295d2467431d"],
+Cell[CellGroupData[{
+Cell[19135, 542, 183, 4, 44, "Input",ExpressionUUID->"3940ebce-d0b5-4212-8203-bea5e06da561"],
+Cell[19321, 548, 809, 25, 52, "Output",ExpressionUUID->"a05e2c9f-f34e-4c2a-a923-ea4935594b8b"]
+}, Open  ]],
+Cell[20145, 576, 172, 4, 44, "Input",ExpressionUUID->"fec43cdf-a48e-432c-b9aa-3b1f051d9f6e"],
+Cell[CellGroupData[{
+Cell[20342, 584, 167, 3, 44, "Input",ExpressionUUID->"2b370175-2c16-458b-a451-858ea8769282"],
+Cell[20512, 589, 1002, 30, 52, "Output",ExpressionUUID->"c94bf2ba-405f-488f-9d4e-99c9d50093ab"]
+}, Open  ]],
+Cell[21529, 622, 219, 5, 44, "Input",ExpressionUUID->"cebdfbab-7a4d-48d1-bea5-dece3e54a921"],
+Cell[21751, 629, 220, 5, 70, "Input",ExpressionUUID->"c254a138-39e6-4c35-8532-cc78028b0ae1"],
+Cell[21974, 636, 328, 12, 226, "Input",ExpressionUUID->"8e10d800-8286-4f48-b45f-2864b8b7b1b6"],
+Cell[22305, 650, 135, 2, 44, "Input",ExpressionUUID->"f98cecf4-202c-4ac7-9022-fdbe794205fd"],
+Cell[22443, 654, 272, 7, 122, "Input",ExpressionUUID->"ae552c29-b809-40ac-aecf-eac4177b7921"],
+Cell[22718, 663, 209, 5, 70, "Input",ExpressionUUID->"6c8bb821-7cb2-4ce7-8b9a-94127bdb6fc3"],
+Cell[22930, 670, 793, 19, 408, "Input",ExpressionUUID->"006e954e-ba95-4371-b74f-902696350a73"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[23760, 694, 188, 3, 65, "Subsubsection",ExpressionUUID->"3ced2615-45b3-4386-bbe9-3eb4cdfb8aa6"],
+Cell[23951, 699, 360, 7, 122, "Input",ExpressionUUID->"d2003ca5-380b-4423-96d4-a045806483b1"],
+Cell[24314, 708, 245, 5, 70, "Input",ExpressionUUID->"d3aafb0a-136d-471a-922d-37c9bb1447f3"],
+Cell[CellGroupData[{
+Cell[24584, 717, 325, 7, 122, "Input",ExpressionUUID->"1c675ad7-89cb-4f26-82d6-03b3ae54f8ac"],
+Cell[24912, 726, 940, 26, 86, "Output",ExpressionUUID->"0ce3eeb2-74b8-4086-b3dc-00000731c236"]
+}, Open  ]],
+Cell[25867, 755, 170, 4, 44, "Input",ExpressionUUID->"6413f2f6-94ee-41fa-bc3d-4cc41cf21942"],
+Cell[26040, 761, 141, 2, 44, "Input",ExpressionUUID->"616e6811-8dd9-437f-9099-e65a2850686f"],
+Cell[26184, 765, 113, 5, 70, "Input",ExpressionUUID->"cc69fbe6-6486-4cdc-bcda-c723397dab49"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[26346, 776, 177, 3, 79, "Subsection",ExpressionUUID->"71c886c2-0d03-41be-88cc-fd16ac5aeb88"],
+Cell[CellGroupData[{
+Cell[26548, 783, 161, 3, 65, "Subsubsection",ExpressionUUID->"61fd736f-fb75-4d63-be5e-b83f552180ed"],
+Cell[26712, 788, 315, 6, 96, "Input",ExpressionUUID->"bca8f0bc-e06a-4c71-bd5c-e0f81af5bdbb"],
+Cell[27030, 796, 488, 11, 174, "Input",ExpressionUUID->"2d48d59b-dd7b-485d-8dd8-05a6034624c0"],
+Cell[CellGroupData[{
+Cell[27543, 811, 109, 2, 44, "Input",ExpressionUUID->"a49e7e6c-b96f-4e64-9b07-cb2719adea78"],
+Cell[27655, 815, 1900, 64, 142, "Output",ExpressionUUID->"e574be73-2337-4c2d-abed-e0a62286ca3b"]
+}, Open  ]],
+Cell[29570, 882, 149, 2, 44, "Input",ExpressionUUID->"69c672c3-07e2-4ad2-a9a8-40a4efa8f32d"],
+Cell[CellGroupData[{
+Cell[29744, 888, 187, 5, 44, "Input",ExpressionUUID->"e928b49a-44b4-43fe-90e8-f23b649f371c"],
+Cell[29934, 895, 731, 22, 52, "Output",ExpressionUUID->"4d8878bc-893c-4b7f-9d6a-cd4bf1e012f6"]
+}, Open  ]],
+Cell[30680, 920, 152, 2, 44, "Input",ExpressionUUID->"0e6c867b-5ef7-4401-a268-fcce6d3b2b91"],
+Cell[CellGroupData[{
+Cell[30857, 926, 169, 3, 44, "Input",ExpressionUUID->"9987948d-2012-47b8-bf51-2f406167f1e4"],
+Cell[31029, 931, 749, 23, 52, "Output",ExpressionUUID->"8ea2e887-f955-4730-bf23-8be476a7819d"]
+}, Open  ]],
+Cell[31793, 957, 207, 5, 44, "Input",ExpressionUUID->"c71f9a41-be7d-4b69-b920-ae13c8da7f65"],
+Cell[32003, 964, 230, 5, 70, "Input",ExpressionUUID->"17a2436e-af86-4e5f-8756-43370c84db78"],
+Cell[32236, 971, 336, 10, 200, "Input",ExpressionUUID->"2e257d83-00d7-48a4-89be-dde84e76d4dd"],
+Cell[32575, 983, 144, 2, 44, "Input",ExpressionUUID->"c15a6840-62ac-4831-91ce-7b23973803db"],
+Cell[32722, 987, 276, 7, 122, "Input",ExpressionUUID->"1fbabcea-262e-42bb-bb6e-98ad8f26c666"],
+Cell[33001, 996, 199, 5, 70, "Input",ExpressionUUID->"091389d2-1f1b-47f1-a85b-7c1076b63c66"],
+Cell[33203, 1003, 767, 19, 434, "Input",ExpressionUUID->"808c5b92-0ff1-436d-addf-d5a6726b0a6e"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[34007, 1027, 219, 4, 65, "Subsubsection",ExpressionUUID->"5b8224ff-f832-4e60-9a48-6d5ba995d34b"],
+Cell[34229, 1033, 322, 6, 96, "Input",ExpressionUUID->"1f07857a-8aea-428a-9386-b16699b4bfeb"],
+Cell[34554, 1041, 493, 9, 96, "Input",ExpressionUUID->"d535c02d-1f15-4b46-bda3-8f9922148c21"],
+Cell[CellGroupData[{
+Cell[35072, 1054, 183, 4, 44, "Input",ExpressionUUID->"ede2e3d4-d1bb-4873-a334-3deea0aa8f4b"],
+Cell[35258, 1060, 1035, 30, 52, "Output",ExpressionUUID->"61168f8f-7c91-4a9e-8146-d15013e2b91f"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[36330, 1095, 167, 3, 44, "Input",ExpressionUUID->"d2aed968-667e-4632-9f6e-7039afac3872"],
+Cell[36500, 1100, 5668, 164, 188, "Output",ExpressionUUID->"0b113420-3112-4d24-8489-21b79f38dbc4"]
+}, Open  ]],
+Cell[42183, 1267, 219, 5, 44, "Input",ExpressionUUID->"21488c0a-e4b5-4c94-8c45-9543e31526d9"],
+Cell[42405, 1274, 144, 2, 44, "Input",ExpressionUUID->"370a9f9b-099d-4757-a5c2-16af8d42c299"],
+Cell[42552, 1278, 272, 7, 122, "Input",ExpressionUUID->"bb47c419-2093-4f75-8437-a603b21ee0fd"],
+Cell[42827, 1287, 196, 5, 70, "Input",ExpressionUUID->"eafa59fd-ec61-413e-a65b-3c40061eb647"],
+Cell[43026, 1294, 771, 19, 434, "Input",ExpressionUUID->"4525be33-7a36-4ee8-8274-f9522fab7105"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[43858, 1320, 162, 3, 99, "Section",ExpressionUUID->"3a4c4404-5a1f-4dbc-9517-8e02b0e2ca28"],
+Cell[CellGroupData[{
+Cell[44045, 1327, 181, 3, 79, "Subsection",ExpressionUUID->"15e3d413-059f-4971-9c5b-59690723a8a7"],
+Cell[CellGroupData[{
+Cell[44251, 1334, 161, 3, 65, "Subsubsection",ExpressionUUID->"148f5c0b-f04b-49e5-b90e-40697a19ba4b"],
+Cell[44415, 1339, 444, 9, 148, "Input",ExpressionUUID->"d5fe9ea6-6956-4ab8-9b99-e6749015ca65"],
+Cell[CellGroupData[{
+Cell[44884, 1352, 274, 6, 70, "Input",ExpressionUUID->"5ba7501d-39c6-4994-87e0-cdacd99e7d85"],
+Cell[45161, 1360, 1446, 44, 192, "Output",ExpressionUUID->"960c1ec8-cbc7-4949-b18a-7d879ddae763"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[46644, 1409, 151, 5, 70, "Input",ExpressionUUID->"f37bbafb-541c-4cc7-9af3-aeae10ef2469"],
+Cell[46798, 1416, 1403, 44, 100, "Output",ExpressionUUID->"027fd20a-3410-46f2-9152-a9a48a5c985a"]
+}, Open  ]],
+Cell[48216, 1463, 149, 2, 44, "Input",ExpressionUUID->"f1542d90-07d8-49a8-b086-d005c229f55c"],
+Cell[CellGroupData[{
+Cell[48390, 1469, 205, 5, 44, "Input",ExpressionUUID->"dd6b54af-f984-4430-b2e9-e2ffcebb2cb4"],
+Cell[48598, 1476, 751, 22, 52, "Output",ExpressionUUID->"2186f38b-3f8e-4283-b4af-418c28616a58"]
+}, Open  ]],
+Cell[49364, 1501, 247, 6, 70, "Input",ExpressionUUID->"18ec6dd4-3a08-4157-ac08-5eabd9791fd6"],
+Cell[CellGroupData[{
+Cell[49636, 1511, 169, 3, 44, "Input",ExpressionUUID->"00f5661a-13b5-4444-9013-518dbed0ed1d"],
+Cell[49808, 1516, 175, 3, 50, "Output",ExpressionUUID->"6e50337a-d145-4982-b9c7-85ca77f154ff"]
+}, Open  ]],
+Cell[49998, 1522, 207, 5, 44, "Input",ExpressionUUID->"9049fbf6-5e39-4296-ac3e-c390a6c53330"],
+Cell[50208, 1529, 154, 2, 44, "Input",ExpressionUUID->"84d180ad-d9da-431b-9b14-7f94cb676112"],
+Cell[CellGroupData[{
+Cell[50387, 1535, 225, 5, 70, "Input",ExpressionUUID->"9049fbf6-5e39-4296-ac3e-c390a6c53332"],
+Cell[50615, 1542, 1211, 40, 64, "Output",ExpressionUUID->"f67c1797-5c50-435c-98f1-ba876954f0f3"]
+}, Open  ]],
+Cell[51841, 1585, 270, 6, 70, "Input",ExpressionUUID->"768e5de8-e026-46e9-b340-2c10fa549d3a"],
+Cell[52114, 1593, 500, 11, 226, "Input",ExpressionUUID->"63b9a1a6-67ef-49f7-aabd-229577eeadb8"],
+Cell[52617, 1606, 132, 2, 44, "Input",ExpressionUUID->"28784e03-6240-4d6d-b585-29f22ab147e3"],
+Cell[52752, 1610, 274, 7, 122, "Input",ExpressionUUID->"28f7d899-c18b-4ff0-ba65-3318573d282f"],
+Cell[53029, 1619, 205, 5, 70, "Input",ExpressionUUID->"2756b824-d399-4953-9803-3ecd000297d7"],
+Cell[53237, 1626, 734, 18, 408, "Input",ExpressionUUID->"8d3d5fd7-4164-4996-92ce-eac761bddd26"],
+Cell[CellGroupData[{
+Cell[53996, 1648, 104, 2, 44, "Input",ExpressionUUID->"711254d1-e534-409d-9707-3f9823aa0041"],
+Cell[54103, 1652, 1209, 40, 64, "Output",ExpressionUUID->"2734bee4-b360-478a-9286-8259dfeb9725"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[55361, 1698, 188, 3, 65, "Subsubsection",ExpressionUUID->"fc40feb8-44d6-4664-b2a5-4c2acb89d70d"],
+Cell[55552, 1703, 303, 7, 96, "Input",ExpressionUUID->"7e554eae-54b5-49d7-be7d-a064efb7e4ad"],
+Cell[55858, 1712, 286, 7, 96, "Input",ExpressionUUID->"c9e9960a-7fe5-444f-bdf5-88581f7c9190"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[56193, 1725, 177, 3, 79, "Subsection",ExpressionUUID->"dc6bfe15-8932-47ab-9b8b-d642b095348d"],
+Cell[CellGroupData[{
+Cell[56395, 1732, 161, 3, 65, "Subsubsection",ExpressionUUID->"6ba9151b-97ee-4c04-8a67-b2e938197fca"],
+Cell[56559, 1737, 256, 5, 70, "Input",ExpressionUUID->"4ce5882f-849b-465c-b305-7ccbf63cd426"],
+Cell[CellGroupData[{
+Cell[56840, 1746, 272, 6, 70, "Input",ExpressionUUID->"dfbe4f60-c477-48b2-a8d7-40862df2285d"],
+Cell[57115, 1754, 1402, 42, 192, "Output",ExpressionUUID->"8e857954-0d3c-4f32-adc9-915d7fb0fe95"]
+}, Open  ]],
+Cell[58532, 1799, 145, 2, 44, "Input",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d5"],
+Cell[CellGroupData[{
+Cell[58702, 1805, 187, 5, 44, "Input",ExpressionUUID->"8c7722e6-b339-41f2-b7da-42de8c65d231"],
+Cell[58892, 1812, 1224, 39, 52, "Output",ExpressionUUID->"7104518e-a8a6-4c7c-817d-93a7e270f35d"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[60153, 1856, 169, 3, 44, "Input",ExpressionUUID->"0c92f4e9-fa0d-4173-8391-49e186b7ad48"],
+Cell[60325, 1861, 1262, 39, 52, "Output",ExpressionUUID->"7c9fffff-5421-48e7-8166-f40d2ae201c6"]
+}, Open  ]],
+Cell[61602, 1903, 207, 5, 44, "Input",ExpressionUUID->"94ab4bf9-79e5-4466-8c74-c31644a003fc"],
+Cell[61812, 1910, 144, 2, 44, "Input",ExpressionUUID->"5d735797-3a3d-4400-8dc4-4fdf10c774f1"],
+Cell[61959, 1914, 274, 7, 122, "Input",ExpressionUUID->"2b763bdb-6f2d-47ce-8352-fe4c6b2abf12"],
+Cell[62236, 1923, 169, 4, 44, "Input",ExpressionUUID->"e1eadbb6-6ae7-495b-a4b9-da1816f7a5e9"],
+Cell[62408, 1929, 814, 20, 434, "Input",ExpressionUUID->"6d5f8eb8-2490-4ab7-a37d-436224479158"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[63259, 1954, 222, 4, 65, "Subsubsection",ExpressionUUID->"242e6abb-2625-415f-acf0-de247bd8a2e5"],
+Cell[63484, 1960, 129, 2, 44, "Input",ExpressionUUID->"4ec89589-e20f-4fa9-a34d-588147b942ab"],
+Cell[CellGroupData[{
+Cell[63638, 1966, 264, 6, 70, "Input",ExpressionUUID->"5ba7501d-39c6-4994-87e0-cdacd99e7d86"],
+Cell[63905, 1974, 1576, 50, 192, "Output",ExpressionUUID->"f40594f4-311a-4e79-9e2d-f5c504e3aa9a"]
+}, Open  ]],
+Cell[65496, 2027, 272, 7, 122, "Input",ExpressionUUID->"f37bbafb-541c-4cc7-9af3-aeae10ef2470"],
+Cell[65771, 2036, 769, 19, 434, "Input",ExpressionUUID->"f37bbafb-541c-4cc7-9af3-aeae10ef2471"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[66601, 2062, 162, 3, 99, "Section",ExpressionUUID->"66351716-b3e0-4898-90cd-35f9158b866d"],
+Cell[CellGroupData[{
+Cell[66788, 2069, 181, 3, 79, "Subsection",ExpressionUUID->"993f8276-69fb-46e7-9e18-b46f3932d877"],
+Cell[CellGroupData[{
+Cell[66994, 2076, 161, 3, 65, "Subsubsection",ExpressionUUID->"71886352-81c9-4900-adbb-9c755f6ef001"],
+Cell[67158, 2081, 249, 6, 96, "Input",ExpressionUUID->"8ec2e909-cb1f-43cc-be08-85bad19490e9"],
+Cell[CellGroupData[{
+Cell[67432, 2091, 274, 6, 70, "Input",ExpressionUUID->"dfbe4f60-c477-48b2-a8d7-40862df2285e"],
+Cell[67709, 2099, 1805, 53, 244, "Output",ExpressionUUID->"c61bb349-ce00-421b-afd7-80a85c511d84"]
+}, Open  ]],
+Cell[69529, 2155, 139, 2, 44, "Input",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d6"],
+Cell[CellGroupData[{
+Cell[69693, 2161, 187, 5, 44, "Input",ExpressionUUID->"8c7722e6-b339-41f2-b7da-42de8c65d232"],
+Cell[69883, 2168, 942, 28, 52, "Output",ExpressionUUID->"5a2d31f7-5921-4fdb-b2b0-5fbe16c7002e"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[70862, 2201, 169, 3, 44, "Input",ExpressionUUID->"0c92f4e9-fa0d-4173-8391-49e186b7ad49"],
+Cell[71034, 2206, 175, 3, 50, "Output",ExpressionUUID->"324f4e51-1784-414c-9291-bdcec2008a7f"]
+}, Open  ]],
+Cell[71224, 2212, 207, 5, 44, "Input",ExpressionUUID->"94ab4bf9-79e5-4466-8c74-c31644a003fd"],
+Cell[71434, 2219, 132, 2, 44, "Input",ExpressionUUID->"2f1cb04b-da6a-44fd-b5e5-b524d682821b"],
+Cell[71569, 2223, 274, 7, 122, "Input",ExpressionUUID->"2b763bdb-6f2d-47ce-8352-fe4c6b2abf13"],
+Cell[71846, 2232, 169, 4, 44, "Input",ExpressionUUID->"02269668-e701-47b5-9565-ca9e6eeb31be"],
+Cell[72018, 2238, 767, 19, 434, "Input",ExpressionUUID->"6d5f8eb8-2490-4ab7-a37d-436224479159"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[72822, 2262, 188, 3, 65, "Subsubsection",ExpressionUUID->"7b1975a5-e854-41ce-b483-15a9e5c50302"],
+Cell[73013, 2267, 154, 2, 44, "Input",ExpressionUUID->"97171518-00ed-47cc-a121-e9bdb3622e06"],
+Cell[73170, 2271, 290, 7, 96, "Input",ExpressionUUID->"87c820a5-2a57-4ad8-941a-9801fc8609a1"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[73509, 2284, 177, 3, 79, "Subsection",ExpressionUUID->"3e9263d2-1563-4627-9070-2f343c5b1894"],
+Cell[CellGroupData[{
+Cell[73711, 2291, 161, 3, 65, "Subsubsection",ExpressionUUID->"917999bc-450a-4590-905f-d7a35983b9ad"],
+Cell[73875, 2296, 121, 2, 44, "Input",ExpressionUUID->"8e8a0ecd-0c42-4f6e-9204-eb28a6d2694f"],
+Cell[CellGroupData[{
+Cell[74021, 2302, 272, 6, 70, "Input",ExpressionUUID->"dfbe4f60-c477-48b2-a8d7-40862df2285f"],
+Cell[74296, 2310, 1759, 51, 244, "Output",ExpressionUUID->"32f719ef-a2b8-4a0c-9954-5bff3dfed666"]
+}, Open  ]],
+Cell[76070, 2364, 274, 7, 122, "Input",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d7"],
+Cell[76347, 2373, 579, 15, 330, "Input",ExpressionUUID->"9237914d-3087-4a84-8565-062eba674abf"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[76963, 2393, 220, 4, 65, "Subsubsection",ExpressionUUID->"fbdfd191-d76e-43c3-838f-00a77598371a"],
+Cell[77186, 2399, 129, 2, 44, "Input",ExpressionUUID->"2bb12e34-bd40-4557-b1e4-fcd4e4b84503"],
+Cell[CellGroupData[{
+Cell[77340, 2405, 264, 6, 70, "Input",ExpressionUUID->"80b7c814-0387-4cea-a623-2a6f884b48db"],
+Cell[77607, 2413, 2023, 63, 244, "Output",ExpressionUUID->"2ee86c25-0096-4a0b-875e-9abad27ce0c7"]
+}, Open  ]],
+Cell[79645, 2479, 272, 7, 122, "Input",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d8"],
+Cell[79920, 2488, 581, 15, 330, "Input",ExpressionUUID->"9dc48558-e140-4b74-b070-aca68bc53e07"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[80562, 2510, 230, 4, 99, "Section",ExpressionUUID->"682b1df4-d193-4305-81db-295cbf441135"],
+Cell[80795, 2516, 438, 9, 148, "Input",ExpressionUUID->"79390146-49da-47da-8089-f33f82e152f6"],
+Cell[CellGroupData[{
+Cell[81258, 2529, 181, 3, 79, "Subsection",ExpressionUUID->"682b1df4-d193-4305-81db-295cbf441136"],
+Cell[81442, 2534, 119, 2, 44, "Input",ExpressionUUID->"205bdc71-951a-43d7-a76a-6522ec6cbd60"],
+Cell[81564, 2538, 167, 3, 44, "Input",ExpressionUUID->"392a8725-4a94-4aea-abda-7f2b707a668c"],
+Cell[81734, 2543, 181, 4, 44, "Input",ExpressionUUID->"c1e4f208-9cd0-42d7-a9f1-f081a913ab95"],
+Cell[81918, 2549, 770, 19, 434, "Input",ExpressionUUID->"3e129198-b31f-4125-981d-af1d1efad77a"],
+Cell[82691, 2570, 120, 2, 44, "Input",ExpressionUUID->"30d5e547-2b89-48df-a2a4-100105cabac4"],
+Cell[82814, 2574, 169, 3, 44, "Input",ExpressionUUID->"073bea2e-c571-45a0-be49-9888fd7a39c0"],
+Cell[82986, 2579, 773, 19, 434, "Input",ExpressionUUID->"6d688ce4-b6e1-4ae2-907b-0ac4b68637b7"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[83796, 2603, 177, 3, 79, "Subsection",ExpressionUUID->"682b1df4-d193-4305-81db-295cbf441137"],
+Cell[83976, 2608, 119, 2, 44, "Input",ExpressionUUID->"98907971-3941-4fab-85bc-2c6f35c64a96"],
+Cell[84098, 2612, 167, 3, 44, "Input",ExpressionUUID->"43fe8e11-e4ad-4fb6-a054-5e29d3e647c9"],
+Cell[84268, 2617, 773, 19, 434, "Input",ExpressionUUID->"7e5c1e02-590f-41fe-bdf0-409aacf7b161"],
+Cell[85044, 2638, 120, 2, 44, "Input",ExpressionUUID->"3e4cf9dc-714a-4e43-8f45-4e2e3e687e77"],
+Cell[85167, 2642, 169, 3, 44, "Input",ExpressionUUID->"71c886c2-0d03-41be-88cc-fd16ac5aeb89"],
+Cell[85339, 2647, 776, 19, 434, "Input",ExpressionUUID->"b9bbef66-8e50-46b0-9414-0d3427ff59d9"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+
